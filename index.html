@@ -1,13 +1,60 @@
-HTML 
-<!DOCTYPE html> 
-<html lang="ru"> 
-<head> 
- <meta charset="UTF-8"> 
- <title>Облачная практика</title> 
-</head> 
-<body> 
- <h1>Проект успешно запущен в облаке!</h1> 
- <hr> 
- <p>Работу выполнил студент: <strong>Ситников Ярослав</strong></p>  <p>Группа: <strong>ПО-242</strong></p> 
- <p>Тип облака: <strong>PaaS (GitHub Pages)</strong></p> </body> 
-</html> 
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Firebase + GitHub Pages</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding-top: 50px; }
+        input { margin: 10px; padding: 8px; width: 200px; }
+        button { padding: 10px 20px; cursor: pointer; background: #4CAF50; color: white; border: none; }
+    </style>
+</head>
+<body>
+    <h2>Регистрация в облаке</h2>
+    <input type="text" id="userName" placeholder="Ваше имя"><br>
+    <input type="email" id="userEmail" placeholder="Ваш Email"><br>
+    <button id="sendBtn">Отправить данные</button>
+    <p id="status"></p>
+
+    <script type="module">
+        // Импорт модулей Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // ТВОИ КЛЮЧИ (ЗАМЕНИ ЭТОТ БЛОК НА СВОЙ ИЗ FIREBASE)
+        const firebaseConfig = {
+            apiKey: "ТВОЙ_API_KEY",
+            authDomain: "ТВОЙ_ID.firebaseapp.com",
+            projectId: "ТВОЙ_ID",
+            storageBucket: "ТВОЙ_ID.appspot.com",
+            messagingSenderId: "ТВОЙ_ID",
+            appId: "ТВОЙ_APP_ID"
+        };
+
+        // Инициализация
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Логика кнопки
+        document.getElementById('sendBtn').onclick = async () => {
+            const name = document.getElementById('userName').value;
+            const email = document.getElementById('userEmail').value;
+            const status = document.getElementById('status');
+
+            try {
+                await addDoc(collection(db, "requests"), {
+                    name: name,
+                    email: email,
+                    time: new Date()
+                });
+                status.innerText = "Готово! Данные в облаке.";
+                status.style.color = "green";
+            } catch (e) {
+                status.innerText = "Ошибка! Проверь консоль.";
+                status.style.color = "red";
+                console.error(e);
+            }
+        };
+    </script>
+</body>
+</html>
