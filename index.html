@@ -2,57 +2,87 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Firebase + GitHub Pages</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Registration | Firebase & GitHub</title>
     <style>
-        body { font-family: sans-serif; text-align: center; padding-top: 50px; }
-        input { margin: 10px; padding: 8px; width: 200px; }
-        button { padding: 10px 20px; cursor: pointer; background: #4CAF50; color: white; border: none; }
+        :root { --primary: #6366f1; --bg: #f8fafc; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 2.5rem; border-radius: 1.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; max-width: 350px; text-align: center; }
+        h2 { color: #1e293b; margin-bottom: 0.5rem; }
+        p { color: #64748b; font-size: 0.9rem; margin-bottom: 2rem; }
+        input { width: 100%; padding: 0.8rem; margin-bottom: 1rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; box-sizing: border-box; outline: none; transition: 0.3s; }
+        input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
+        button { width: 100%; padding: 0.8rem; background: var(--primary); color: white; border: none; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: 0.3s; }
+        button:hover { background: #4f46e5; transform: translateY(-1px); }
+        button:disabled { background: #cbd5e1; cursor: not-allowed; }
+        #status { margin-top: 1rem; font-size: 0.85rem; font-weight: 500; }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
     </style>
 </head>
 <body>
-    <h2>Регистрация в облаке</h2>
-    <input type="text" id="userName" placeholder="Ваше имя"><br>
-    <input type="email" id="userEmail" placeholder="Ваш Email"><br>
-    <button id="sendBtn">Отправить данные</button>
-    <p id="status"></p>
 
-    <script type="module">
-        // Импорт модулей Firebase
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+<div class="card">
+    <h2>Cloud App 🚀</h2>
+    <p>Тестовый проект: BaaS + PaaS</p>
+    
+    <input type="text" id="userName" placeholder="Введите ваше имя" required>
+    <input type="email" id="userEmail" placeholder="example@mail.com" required>
+    
+    <button id="sendBtn">Отправить в Firebase</button>
+    <div id="status"></div>
+</div>
 
-        // ТВОИ КЛЮЧИ (ЗАМЕНИ ЭТОТ БЛОК НА СВОЙ ИЗ FIREBASE)
-        const firebaseConfig = {
-            apiKey: "ТВОЙ_API_KEY",
-            authDomain: "ТВОЙ_ID.firebaseapp.com",
-            projectId: "ТВОЙ_ID",
-            storageBucket: "ТВОЙ_ID.appspot.com",
-            messagingSenderId: "ТВОЙ_ID",
-            appId: "ТВОЙ_APP_ID"
-        };
-        // Инициализация
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        // Логика кнопки
-        document.getElementById('sendBtn').onclick = async () => {
-            const name = document.getElementById('userName').value;
-            const email = document.getElementById('userEmail').value;
-            const status = document.getElementById('status');
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-            try {
-                await addDoc(collection(db, "requests"), {
-                    name: name,
-                    email: email,
-                    time: new Date()
-                });
-                status.innerText = "Готово! Данные в облаке.";
-                status.style.color = "green";
-            } catch (e) {
-                status.innerText = "Ошибка! Проверь консоль.";
-                status.style.color = "red";
-                console.error(e);
-            }
-        };
-    </script>
+    // --- ВНИМАНИЕ: ВСТАВЬ СВОИ ДАННЫЕ НИЖЕ ---
+const firebaseConfig = {
+  apiKey: "AIzaSyCw3ttPKMx-jAd1IL-5IZRdA4KVAMYdSgA",
+  authDomain: "projctick.firebaseapp.com",
+  projectId: "projctick",
+  storageBucket: "projctick.firebasestorage.app",
+  messagingSenderId: "639615889635",
+  appId: "1:639615889635:web:f591a1ebf29ae95e75d5d6",
+  measurementId: "G-XL8TQLV7BB"
+};
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const btn = document.getElementById('sendBtn');
+    const status = document.getElementById('status');
+
+    btn.onclick = async () => {
+        const name = document.getElementById('userName').value;
+        const email = document.getElementById('userEmail').value;
+
+        if(!name || !email) {
+            status.innerHTML = '<span class="error">Заполните поля!</span>';
+            return;
+        }
+
+        btn.disabled = true;
+        status.innerHTML = "Отправка...";
+
+        try {
+            await addDoc(collection(db, "requests"), {
+                name: name,
+                email: email,
+                timestamp: new Date().toLocaleString()
+            });
+            status.innerHTML = '<span class="success">✨ Данные в облаке!</span>';
+            document.getElementById('userName').value = "";
+            document.getElementById('userEmail').value = "";
+        } catch (e) {
+            console.error(e);
+            status.innerHTML = '<span class="error">Ошибка! Проверь ключи или Rules.</span>';
+        } finally {
+            btn.disabled = false;
+        }
+    };
+</script>
+
 </body>
 </html>
