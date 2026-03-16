@@ -3,31 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reactive Cloud App | BaaS</title>
+    <title>Reactive Cloud App | Security Test</title>
     <style>
-        :root { --primary: #6366f1; --bg: #f8fafc; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
-        .card { background: white; padding: 2rem; border-radius: 1.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; max-width: 350px; text-align: center; margin-bottom: 20px; }
-        input { width: 100%; padding: 0.8rem; margin-bottom: 1rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; box-sizing: border-box; }
-        button { width: 100%; padding: 0.8rem; background: var(--primary); color: white; border: none; border-radius: 0.5rem; font-weight: 600; cursor: pointer; }
+        :root { --primary: #6366f1; --bg: #f1f5f9; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 40px 20px; margin: 0; }
         
-        /* Стили для ленты сообщений */
+        .card { background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.05); width: 100%; max-width: 350px; text-align: center; margin-bottom: 30px; }
+        h2 { color: #1e293b; margin: 0 0 1rem; }
+        input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #e2e8f0; border-radius: 8px; box-sizing: border-box; outline: none; }
+        .send-btn { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+
         #feed { width: 100%; max-width: 400px; }
-        .post { background: white; padding: 15px; margin-bottom: 10px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
-        .like-btn { width: auto; background: #fee2e2; color: #ef4444; padding: 5px 15px; font-size: 0.8rem; }
-        .like-btn:hover { background: #fecaca; }
-        #status { margin-top: 1rem; font-size: 0.85rem; }
+        .user-post { background: white; padding: 15px 20px; margin-bottom: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; justify-content: space-between; align-items: center; border-left: 5px solid var(--primary); animation: fadeIn 0.3s ease; }
+        .user-info strong { display: block; color: #1e293b; font-size: 1.1rem; }
+        .user-info span { color: #64748b; font-size: 0.85rem; }
+        
+        .like-container { display: flex; align-items: center; gap: 8px; }
+        .like-count { font-weight: bold; color: #1e293b; font-size: 1.1rem; }
+        .heart-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; transition: transform 0.2s; padding: 0; }
+        .heart-btn:hover { transform: scale(1.2); }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
 <div class="card">
     <h2>Cloud App 🚀</h2>
-    <p>Реактивная система (onSnapshot)</p>
-    <input type="text" id="userName" placeholder="Введите ваше имя" required>
-    <input type="email" id="userEmail" placeholder="example@mail.com" required>
-    <button id="sendBtn">Отправить</button>
-    <div id="status"></div>
+    <input type="text" id="userName" placeholder="Имя Фамилия" required>
+    <input type="email" id="userEmail" placeholder="email@turan.kz" required>
+    <button class="send-btn" id="sendBtn">Опубликовать</button>
 </div>
 
 <div id="feed"></div>
@@ -50,57 +55,58 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    window.db = db; // Для тестов в консоли
 
-    // 1. ОТПРАВКА ДАННЫХ
-    const btn = document.getElementById('sendBtn');
-    btn.onclick = async () => {
+    // 1. Отправка данных
+    document.getElementById('sendBtn').onclick = async () => {
         const name = document.getElementById('userName').value;
         const email = document.getElementById('userEmail').value;
         if(!name || !email) return;
 
-        try {
-            await addDoc(collection(db, "requests"), {
-                name: name,
-                email: email,
-                likes: 0,
-                timestamp: serverTimestamp() // Используем серверное время для сортировки
-            });
-            document.getElementById('userName').value = "";
-            document.getElementById('userEmail').value = "";
-        } catch (e) { console.error(e); }
+        await addDoc(collection(db, "requests"), {
+            name: name,
+            email: email,
+            likes: 0,
+            timestamp: serverTimestamp()
+        });
+        document.getElementById('userName').value = "";
+        document.getElementById('userEmail').value = "";
     };
 
-    // 2. РЕАКТИВНЫЙ ИНТЕРФЕЙС (onSnapshot + orderBy)
+    // 2. Реактивная лента (onSnapshot)
     const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
     
     onSnapshot(q, (snapshot) => {
         const feed = document.getElementById('feed');
-        feed.innerHTML = ""; // Очищаем ленту перед обновлением
+        feed.innerHTML = ""; 
         
-        snapshot.forEach((snapshotDoc) => {
-            const data = snapshotDoc.data();
-            const id = snapshotDoc.id;
+        snapshot.forEach((sDoc) => {
+            const data = sDoc.data();
+            const id = sDoc.id;
 
             const post = document.createElement('div');
-            post.className = 'post';
+            post.className = 'user-post';
             post.innerHTML = `
-                <div>
-                    <strong>${data.name}</strong><br>
-                    <small>${data.email}</small>
+                <div class="user-info">
+                    <strong>${data.name}</strong>
+                    <span>${data.email}</span>
                 </div>
-                <button class="like-btn" id="like-${id}">❤️ ${data.likes || 0}</button>
+                <div class="like-container">
+                    <span class="like-count">${data.likes || 0}</span>
+                    <button class="heart-btn" id="btn-${id}">❤️</button>
+                </div>
             `;
             feed.appendChild(post);
 
-            // 3. АТОМАРНЫЙ ЛАЙК (updateDoc + increment)
-            document.getElementById(`like-${id}`).onclick = async () => {
+            // Клик по сердечку
+            document.getElementById(`btn-${id}`).onclick = async (e) => {
+                e.preventDefault();
                 const docRef = doc(db, "requests", id);
-                await updateDoc(docRef, {
-                    likes: increment(1)
-                });
+                await updateDoc(docRef, { likes: increment(1) });
             };
         });
     });
 </script>
+
 </body>
 </html>
