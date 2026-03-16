@@ -3,86 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloud Registration | Firebase & GitHub</title>
+    <title>Reactive Cloud App | BaaS</title>
     <style>
         :root { --primary: #6366f1; --bg: #f8fafc; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .card { background: white; padding: 2.5rem; border-radius: 1.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; max-width: 350px; text-align: center; }
-        h2 { color: #1e293b; margin-bottom: 0.5rem; }
-        p { color: #64748b; font-size: 0.9rem; margin-bottom: 2rem; }
-        input { width: 100%; padding: 0.8rem; margin-bottom: 1rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; box-sizing: border-box; outline: none; transition: 0.3s; }
-        input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
-        button { width: 100%; padding: 0.8rem; background: var(--primary); color: white; border: none; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: 0.3s; }
-        button:hover { background: #4f46e5; transform: translateY(-1px); }
-        button:disabled { background: #cbd5e1; cursor: not-allowed; }
-        #status { margin-top: 1rem; font-size: 0.85rem; font-weight: 500; }
-        .success { color: #10b981; }
-        .error { color: #ef4444; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
+        .card { background: white; padding: 2rem; border-radius: 1.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; max-width: 350px; text-align: center; margin-bottom: 20px; }
+        input { width: 100%; padding: 0.8rem; margin-bottom: 1rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; box-sizing: border-box; }
+        button { width: 100%; padding: 0.8rem; background: var(--primary); color: white; border: none; border-radius: 0.5rem; font-weight: 600; cursor: pointer; }
+        
+        /* Стили для ленты сообщений */
+        #feed { width: 100%; max-width: 400px; }
+        .post { background: white; padding: 15px; margin-bottom: 10px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
+        .like-btn { width: auto; background: #fee2e2; color: #ef4444; padding: 5px 15px; font-size: 0.8rem; }
+        .like-btn:hover { background: #fecaca; }
+        #status { margin-top: 1rem; font-size: 0.85rem; }
     </style>
 </head>
 <body>
 
 <div class="card">
     <h2>Cloud App 🚀</h2>
-    <p>Тестовый проект: BaaS + PaaS</p>
-    
+    <p>Реактивная система (onSnapshot)</p>
     <input type="text" id="userName" placeholder="Введите ваше имя" required>
     <input type="email" id="userEmail" placeholder="example@mail.com" required>
-    
-    <button id="sendBtn">Отправить в Firebase</button>
+    <button id="sendBtn">Отправить</button>
     <div id="status"></div>
 </div>
 
+<div id="feed"></div>
+
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { 
+        getFirestore, collection, addDoc, onSnapshot, 
+        query, orderBy, doc, updateDoc, increment, serverTimestamp 
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // --- ВНИМАНИЕ: ВСТАВЬ СВОИ ДАННЫЕ НИЖЕ ---
-const firebaseConfig = {
-  apiKey: "AIzaSyCw3ttPKMx-jAd1IL-5IZRdA4KVAMYdSgA",
-  authDomain: "projctick.firebaseapp.com",
-  projectId: "projctick",
-  storageBucket: "projctick.firebasestorage.app",
-  messagingSenderId: "639615889635",
-  appId: "1:639615889635:web:f591a1ebf29ae95e75d5d6",
-  measurementId: "G-XL8TQLV7BB"
-};
+    const firebaseConfig = {
+        apiKey: "AIzaSyCw3ttPKMx-jAd1IL-5IZRdA4KVAMYdSgA",
+        authDomain: "projctick.firebaseapp.com",
+        projectId: "projctick",
+        storageBucket: "projctick.firebasestorage.app",
+        messagingSenderId: "639615889635",
+        appId: "1:639615889635:web:f591a1ebf29ae95e75d5d6"
+    };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    // 1. ОТПРАВКА ДАННЫХ
     const btn = document.getElementById('sendBtn');
-    const status = document.getElementById('status');
-
     btn.onclick = async () => {
         const name = document.getElementById('userName').value;
         const email = document.getElementById('userEmail').value;
-
-        if(!name || !email) {
-            status.innerHTML = '<span class="error">Заполните поля!</span>';
-            return;
-        }
-
-        btn.disabled = true;
-        status.innerHTML = "Отправка...";
+        if(!name || !email) return;
 
         try {
             await addDoc(collection(db, "requests"), {
                 name: name,
                 email: email,
-                timestamp: new Date().toLocaleString()
+                likes: 0,
+                timestamp: serverTimestamp() // Используем серверное время для сортировки
             });
-            status.innerHTML = '<span class="success">✨ Данные в облаке!</span>';
             document.getElementById('userName').value = "";
             document.getElementById('userEmail').value = "";
-        } catch (e) {
-            console.error(e);
-            status.innerHTML = '<span class="error">Ошибка! Проверь ключи или Rules.</span>';
-        } finally {
-            btn.disabled = false;
-        }
+        } catch (e) { console.error(e); }
     };
-</script>
 
+    // 2. РЕАКТИВНЫЙ ИНТЕРФЕЙС (onSnapshot + orderBy)
+    const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
+    
+    onSnapshot(q, (snapshot) => {
+        const feed = document.getElementById('feed');
+        feed.innerHTML = ""; // Очищаем ленту перед обновлением
+        
+        snapshot.forEach((snapshotDoc) => {
+            const data = snapshotDoc.data();
+            const id = snapshotDoc.id;
+
+            const post = document.createElement('div');
+            post.className = 'post';
+            post.innerHTML = `
+                <div>
+                    <strong>${data.name}</strong><br>
+                    <small>${data.email}</small>
+                </div>
+                <button class="like-btn" id="like-${id}">❤️ ${data.likes || 0}</button>
+            `;
+            feed.appendChild(post);
+
+            // 3. АТОМАРНЫЙ ЛАЙК (updateDoc + increment)
+            document.getElementById(`like-${id}`).onclick = async () => {
+                const docRef = doc(db, "requests", id);
+                await updateDoc(docRef, {
+                    likes: increment(1)
+                });
+            };
+        });
+    });
+</script>
 </body>
 </html>
