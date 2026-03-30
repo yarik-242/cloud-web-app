@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reactive Cloud App | Task 13</title>
+    <title>Secure App | Auth & Stats</title>
     <style>
         :root { --primary: #6366f1; --bg: #f1f5f9; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 40px 20px; margin: 0; }
@@ -11,46 +11,51 @@
         .card { background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.05); width: 100%; max-width: 350px; text-align: center; margin-bottom: 20px; }
         h2 { color: #1e293b; margin: 0 0 1rem; }
         input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #e2e8f0; border-radius: 8px; box-sizing: border-box; outline: none; }
-        .send-btn { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+        
+        .send-btn { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.3s; }
+        .send-btn:hover { background: #4f46e5; }
+        .logout-btn { background: #ef4444; margin-top: 10px; }
+        .logout-btn:hover { background: #dc2626; }
 
-        /* --- НОВЫЕ СТИЛИ (ФИЛЬТР И СТАТИСТИКА) --- */
+        /* Профиль пользователя */
+        .user-profile { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 15px; background: #f8fafc; padding: 10px; border-radius: 8px; }
+        .user-profile img { border-radius: 50%; width: 35px; height: 35px; }
+        .user-profile span { font-weight: bold; color: #1e293b; }
+
         .stats-panel { background: #1e293b; color: white; padding: 15px; border-radius: 12px; width: 100%; max-width: 370px; display: flex; justify-content: space-around; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .stat-item span { display: block; font-size: 1.5rem; font-weight: bold; color: #3b82f6; text-align: center; }
         
         .filter-btn { background: #e2e8f0; color: #475569; padding: 10px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 20px; transition: 0.3s; width: 100%; max-width: 400px; }
         .filter-btn.active { background: #f59e0b; color: white; }
-        /* ----------------------------------------- */
 
         #feed { width: 100%; max-width: 400px; }
-        
-        .user-post { 
-            background: white; padding: 15px 20px; margin-bottom: 12px; 
-            border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); 
-            display: flex; flex-direction: column; align-items: flex-start; 
-            border-left: 5px solid var(--primary); animation: fadeIn 0.3s ease; 
-        }
-        
+        .user-post { background: white; padding: 15px 20px; margin-bottom: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; flex-direction: column; align-items: flex-start; border-left: 5px solid var(--primary); animation: fadeIn 0.3s ease; }
         .user-info { margin-bottom: 12px; text-align: left; }
         .user-info strong { display: block; color: #1e293b; font-size: 1.1rem; }
         .user-info span { color: #64748b; font-size: 0.85rem; }
-        
         .like-container { display: flex; align-items: center; gap: 8px; }
         .like-count { font-weight: bold; color: #64748b; font-size: 1rem; }
-        
         .heart-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; transition: transform 0.2s; padding: 0; color: #3b82f6; }
         .heart-btn:hover { transform: scale(1.2); }
         .heart-btn:active { transform: scale(0.9); }
-        
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h2>Cloud App 🚀</h2>
-    <input type="text" id="userName" placeholder="Имя Фамилия" required>
-    <input type="email" id="userEmail" placeholder="email@turan.kz" required>
+<div class="card" id="authCard">
+    <h2>Требуется вход 🔒</h2>
+    <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 15px;">Только авторизованные пользователи могут писать посты и ставить лайки.</p>
+    <button class="send-btn" id="loginBtn">Вход через Google</button>
+</div>
+
+<div class="card" id="postForm" style="display: none;">
+    <div class="user-profile" id="userProfile">
+        </div>
+    <input type="text" id="userName" placeholder="Имя Фамилия" required readonly style="background: #f1f5f9; cursor: not-allowed;">
+    <input type="email" id="userEmail" placeholder="email@turan.kz" required readonly style="background: #f1f5f9; cursor: not-allowed;">
     <button class="send-btn" id="sendBtn">Опубликовать</button>
+    <button class="send-btn logout-btn" id="logoutBtn">Выйти из аккаунта</button>
 </div>
 
 <div class="stats-panel">
@@ -59,15 +64,14 @@
 </div>
 
 <button class="filter-btn" id="filterBtn">🔥 Показать популярные (> 2 лайков)</button>
-
 <div id="feed"></div>
 
 <script type="module">
+    // Импортируем ядро и базу
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { 
-        getFirestore, collection, addDoc, onSnapshot, 
-        query, orderBy, doc, updateDoc, increment, serverTimestamp, where 
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, increment, serverTimestamp, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    // Импортируем модуль авторизации
+    import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyCw3ttPKMx-jAd1IL-5IZRdA4KVAMYdSgA",
@@ -80,89 +84,125 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    window.db = db;
+    
+    // Инициализация авторизации
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+    window.db = db; // Оставляем для тестов в консоли
 
-    let unsubscribe = null; 
-    let isFiltered = false; 
+    // UI Элементы
+    const authCard = document.getElementById('authCard');
+    const postForm = document.getElementById('postForm');
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const userProfile = document.getElementById('userProfile');
+    const userNameInput = document.getElementById('userName');
+    const userEmailInput = document.getElementById('userEmail');
 
-    // 1. ОТПРАВКА ДАННЫХ
-    document.getElementById('sendBtn').onclick = async () => {
-        const name = document.getElementById('userName').value;
-        const email = document.getElementById('userEmail').value;
-        if(!name || !email) return;
-
+    // --- ЛОГИКА АВТОРИЗАЦИИ ---
+    // Войти
+    loginBtn.onclick = async () => {
         try {
-            await addDoc(collection(db, "requests"), {
-                name: name,
-                email: email,
-                likes: 0,
-                timestamp: serverTimestamp()
-            });
-            document.getElementById('userName').value = "";
-            document.getElementById('userEmail').value = "";
-        } catch (e) {
-            console.error("Ошибка при добавлении:", e);
+            await signInWithPopup(auth, provider);
+        } catch (error) {
+            console.error("Ошибка при входе:", error);
+            alert("Не удалось войти: " + error.message);
         }
     };
 
-    // 2. РЕАКТИВНАЯ ЛЕНТА
+    // Выйти
+    logoutBtn.onclick = async () => {
+        await signOut(auth);
+    };
+
+    // Отслеживание состояния (вошел/вышел)
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            // Пользователь авторизован
+            authCard.style.display = 'none';
+            postForm.style.display = 'block';
+            
+            // Заполняем профиль
+            userProfile.innerHTML = `<img src="${user.photoURL}" alt="avatar"> <span>Привет, ${user.displayName.split(' ')[0]}!</span>`;
+            userNameInput.value = user.displayName;
+            userEmailInput.value = user.email;
+        } else {
+            // Пользователь НЕ авторизован
+            authCard.style.display = 'block';
+            postForm.style.display = 'none';
+        }
+    });
+
+    // --- ОТПРАВКА ДАННЫХ (осталась прежней) ---
+    document.getElementById('sendBtn').onclick = async () => {
+        if(!userNameInput.value || !userEmailInput.value) return;
+        try {
+            await addDoc(collection(db, "requests"), {
+                name: userNameInput.value,
+                email: userEmailInput.value,
+                likes: 0,
+                timestamp: serverTimestamp()
+            });
+            alert("Пост успешно опубликован!");
+        } catch (e) {
+            console.error("Ошибка при добавлении:", e);
+            alert("Ошибка доступа! Вы точно авторизованы?");
+        }
+    };
+
+    // --- ЛЕНТА И ФИЛЬТРЫ (остались прежними) ---
+    let unsubscribe = null; 
+    let isFiltered = false; 
+
     function loadFeed() {
         if (unsubscribe) unsubscribe(); 
-
-        let q;
-        if (isFiltered) {
-            q = query(collection(db, "requests"), where("likes", ">", 2), orderBy("likes", "desc"));
-        } else {
-            q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
-        }
+        let q = isFiltered 
+            ? query(collection(db, "requests"), where("likes", ">", 2), orderBy("likes", "desc"))
+            : query(collection(db, "requests"), orderBy("timestamp", "desc"));
         
         unsubscribe = onSnapshot(q, (snapshot) => {
             const feed = document.getElementById('feed');
             feed.innerHTML = ""; 
-            
-            let totalLikesCount = 0; // Переменная для подсчета лайков
+            let totalLikesCount = 0; 
 
             snapshot.forEach((sDoc) => {
                 const data = sDoc.data();
                 const id = sDoc.id;
-                
-                // Считаем лайки для дашборда
                 totalLikesCount += (data.likes || 0);
 
                 const post = document.createElement('div');
                 post.className = 'user-post';
-                
                 post.innerHTML = `
                     <div class="user-info">
                         <strong>${data.name}</strong>
                         <span>${data.email}</span>
                     </div>
                     <div class="like-container">
-                        <button class="heart-btn" id="btn-${id}">&#9829;</button>
+                        <button class="heart-btn" id="btn-${id}" title="Лайкнуть">&#9829;</button>
                         <span class="like-count">${data.likes || 0}</span>
                     </div>
                 `;
                 feed.appendChild(post);
 
-                // Клик по сердечку (Лайк)
+                // Лайк (теперь Firebase проверит, вошел ли ты)
                 document.getElementById(`btn-${id}`).onclick = async (e) => {
                     e.preventDefault();
-                    const docRef = doc(db, "requests", id);
+                    if (!auth.currentUser) {
+                        alert("Только авторизованные пользователи могут ставить лайки!");
+                        return;
+                    }
                     try {
-                        await updateDoc(docRef, { likes: increment(1) });
+                        await updateDoc(doc(db, "requests", id), { likes: increment(1) });
                     } catch (err) {
                         console.error("Ошибка лайка:", err);
                     }
                 };
             });
-
-            // Обновляем дашборд статистики
             document.getElementById('totalPosts').innerText = snapshot.size;
             document.getElementById('totalLikes').innerText = totalLikesCount;
         });
     }
 
-    // 3. ОБРАБОТЧИК КНОПКИ ФИЛЬТРА
     const filterBtn = document.getElementById('filterBtn');
     filterBtn.onclick = () => {
         isFiltered = !isFiltered;
@@ -171,7 +211,6 @@
         loadFeed();
     };
 
-    // Запускаем ленту
     loadFeed();
 </script>
 
