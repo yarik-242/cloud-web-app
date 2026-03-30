@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reactive Cloud App | Security Test</title>
+    <title>Reactive Cloud App | Task 13</title>
     <style>
         :root { --primary: #6366f1; --bg: #f1f5f9; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 40px 20px; margin: 0; }
@@ -13,29 +13,34 @@
         input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #e2e8f0; border-radius: 8px; box-sizing: border-box; outline: none; }
         .send-btn { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
 
+        /* --- НОВЫЕ СТИЛИ ДЛЯ ФИЛЬТРА И РЕДАКТИРОВАНИЯ --- */
+        .filter-btn { background: #e2e8f0; color: #475569; padding: 10px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 20px; transition: 0.3s; width: 100%; max-width: 400px; }
+        .filter-btn.active { background: #f59e0b; color: white; }
+        .edit-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; cursor: pointer; font-size: 1.2rem; transition: transform 0.2s; }
+        .edit-btn:hover { transform: scale(1.2); }
+        /* ------------------------------------------------ */
+
         #feed { width: 100%; max-width: 400px; }
         
-        /* Измененный дизайн поста: теперь элементы идут сверху вниз */
         .user-post { 
             background: white; padding: 15px 20px; margin-bottom: 12px; 
             border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); 
-            display: flex; flex-direction: column; align-items: flex-start; /* Элементы в столбик */
+            display: flex; flex-direction: column; align-items: flex-start; 
             border-left: 5px solid var(--primary); animation: fadeIn 0.3s ease; 
+            position: relative; /* Важно для позиционирования карандаша */
         }
         
-        .user-info { margin-bottom: 12px; text-align: left; }
+        .user-info { margin-bottom: 12px; text-align: left; padding-right: 40px; }
         .user-info strong { display: block; color: #1e293b; font-size: 1.1rem; }
         .user-info span { color: #64748b; font-size: 0.85rem; }
         
-        /* Контейнер для лайка теперь снизу */
         .like-container { display: flex; align-items: center; gap: 8px; }
         .like-count { font-weight: bold; color: #64748b; font-size: 1rem; }
         
-        /* Синее сердечко */
         .heart-btn { 
             background: none; border: none; font-size: 1.5rem; 
             cursor: pointer; transition: transform 0.2s; padding: 0; 
-            color: #3b82f6; /* Синий цвет */
+            color: #3b82f6; 
         }
         .heart-btn:hover { transform: scale(1.2); }
         .heart-btn:active { transform: scale(0.9); }
@@ -52,13 +57,16 @@
     <button class="send-btn" id="sendBtn">Опубликовать</button>
 </div>
 
+<button class="filter-btn" id="filterBtn">🔥 Показать популярные (> 2 лайков)</button>
+
 <div id="feed"></div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { 
         getFirestore, collection, addDoc, onSnapshot, 
-        query, orderBy, doc, updateDoc, increment, serverTimestamp 
+        query, orderBy, doc, updateDoc, increment, serverTimestamp,
+        where // Добавили where для фильтра
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -73,6 +81,9 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     window.db = db;
+
+    let unsubscribe = null; // Переменная для хранения слушателя базы
+    let isFiltered = false; // Состояние фильтра
 
     // 1. ОТПРАВКА ДАННЫХ
     document.getElementById('sendBtn').onclick = async () => {
@@ -94,47 +105,81 @@
         }
     };
 
-    // 2. РЕАКТИВНАЯ ЛЕНТА
-    const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
-    
-    onSnapshot(q, (snapshot) => {
-        const feed = document.getElementById('feed');
-        feed.innerHTML = ""; 
+    // 2. РЕАКТИВНАЯ ЛЕНТА (Вынесена в функцию для переключения режимов)
+    function loadFeed() {
+        if (unsubscribe) unsubscribe(); // Отключаем старый запрос
+
+        let q;
+        if (isFiltered) {
+            // ФУНКЦИЯ 1: Запрос с фильтрацией (where)
+            q = query(collection(db, "requests"), where("likes", ">", 2), orderBy("likes", "desc"));
+        } else {
+            // Стандартный запрос
+            q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
+        }
         
-        snapshot.forEach((sDoc) => {
-            const data = sDoc.data();
-            const id = sDoc.id;
-
-            const post = document.createElement('div');
-            post.className = 'user-post';
+        unsubscribe = onSnapshot(q, (snapshot) => {
+            const feed = document.getElementById('feed');
+            feed.innerHTML = ""; 
             
-            // Используем HTML-код символа червы (&#9829;), чтобы к нему применился синий цвет из CSS
-            post.innerHTML = `
-                <div class="user-info">
-                    <strong>${data.name}</strong>
-                    <span>${data.email}</span>
-                </div>
-                <div class="like-container">
-                    <button class="heart-btn" id="btn-${id}">&#9829;</button>
-                    <span class="like-count">${data.likes || 0}</span>
-                </div>
-            `;
-            feed.appendChild(post);
+            snapshot.forEach((sDoc) => {
+                const data = sDoc.data();
+                const id = sDoc.id;
 
-            // Клик по сердечку
-            document.getElementById(`btn-${id}`).onclick = async (e) => {
-                e.preventDefault();
-                const docRef = doc(db, "requests", id);
-                try {
-                    await updateDoc(docRef, { 
-                        likes: increment(1) 
-                    });
-                } catch (err) {
-                    console.error("Ошибка лайка:", err);
-                }
-            };
+                const post = document.createElement('div');
+                post.className = 'user-post';
+                
+                // Добавили кнопку редактирования (карандаш) в HTML поста
+                post.innerHTML = `
+                    <button class="edit-btn" id="edit-${id}" title="Изменить имя">✏️</button>
+                    <div class="user-info">
+                        <strong>${data.name}</strong>
+                        <span>${data.email}</span>
+                    </div>
+                    <div class="like-container">
+                        <button class="heart-btn" id="btn-${id}">&#9829;</button>
+                        <span class="like-count">${data.likes || 0}</span>
+                    </div>
+                `;
+                feed.appendChild(post);
+
+                // Клик по сердечку (Лайк)
+                document.getElementById(`btn-${id}`).onclick = async (e) => {
+                    e.preventDefault();
+                    const docRef = doc(db, "requests", id);
+                    try {
+                        await updateDoc(docRef, { likes: increment(1) });
+                    } catch (err) {
+                        console.error("Ошибка лайка:", err);
+                    }
+                };
+
+                // ФУНКЦИЯ 2: Клик по карандашу (Редактирование)
+                document.getElementById(`edit-${id}`).onclick = async () => {
+                    const newName = prompt("Введите новое имя:", data.name);
+                    if (newName && newName.trim() !== "") {
+                        try {
+                            await updateDoc(doc(db, "requests", id), { name: newName });
+                        } catch (err) {
+                            console.error("Ошибка редактирования:", err);
+                        }
+                    }
+                };
+            });
         });
-    });
+    }
+
+    // 3. ОБРАБОТЧИК КНОПКИ ФИЛЬТРА
+    const filterBtn = document.getElementById('filterBtn');
+    filterBtn.onclick = () => {
+        isFiltered = !isFiltered;
+        filterBtn.classList.toggle('active');
+        filterBtn.innerText = isFiltered ? "🔙 Показать все посты" : "🔥 Показать популярные (> 2 лайков)";
+        loadFeed();
+    };
+
+    // Запускаем ленту при загрузке страницы
+    loadFeed();
 </script>
 
 </body>
