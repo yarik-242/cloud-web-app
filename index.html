@@ -13,9 +13,9 @@
         input[type="text"], input[type="email"] { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #e2e8f0; border-radius: 8px; box-sizing: border-box; outline: none; }
         
         /* Стили для загрузки файла */
-        .file-input-container { margin-bottom: 15px; text-align: left; }
-        .file-input-container input[type="file"] { width: 100%; font-size: 0.9rem; color: #64748b; }
-        #imagePreview { display: none; width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 15px; }
+        .file-input-container { margin-bottom: 15px; text-align: left; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px dashed #cbd5e1; }
+        .file-input-container input[type="file"] { width: 100%; font-size: 0.9rem; color: #64748b; cursor: pointer; }
+        #imagePreview { display: none; width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 15px; border: 1px solid #e2e8f0; }
 
         .send-btn { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.3s; }
         .send-btn:hover { background: #4f46e5; }
@@ -55,16 +55,17 @@
     <input type="email" id="userEmail" readonly style="background: #f1f5f9; cursor: not-allowed;">
     
     <div class="file-input-container">
-        <label style="font-size: 0.85rem; color: #64748b; display: block; margin-bottom: 5px;">Прикрепить фото:</label>
+        <label style="font-size: 0.85rem; font-weight: bold; color: #1e293b; display: block; margin-bottom: 8px;">Прикрепить фото:</label>
         <input type="file" id="imageInput" accept="image/*">
     </div>
     <img id="imagePreview" alt="Предпросмотр">
+    
     <button class="send-btn" id="sendBtn">Опубликовать</button>
     <button class="send-btn logout-btn" id="logoutBtn">Выйти из аккаунта</button>
 </div>
 
 <div class="stats-panel">
-    <div class="stat-item">Всего заявок: <span id="totalPosts">0</span></div>
+    <div class="stat-item">Всего постов: <span id="totalPosts">0</span></div>
     <div class="stat-item">Собрано лайков: <span id="totalLikes">0</span></div>
 </div>
 
@@ -75,22 +76,23 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, increment, serverTimestamp, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    // НОВОЕ: Импорт модуля Storage (Хранилище картинок)
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
+    // --- ВНИМАНИЕ: ВСТАВЬ СЮДА СВОЙ НОВЫЙ FIREBASE CONFIG ОТ Yarik-projectiks ---
     const firebaseConfig = {
-        apiKey: "AIzaSyCw3ttPKMx-jAd1IL-5IZRdA4KVAMYdSgA",
-        authDomain: "projctick.firebaseapp.com",
-        projectId: "projctick",
-        storageBucket: "projctick.firebasestorage.app",
-        messagingSenderId: "639615889635",
-        appId: "1:639615889635:web:f591a1ebf29ae95e75d5d6"
+        apiKey: "ТВОЙ_КЛЮЧ",
+        authDomain: "yarik-projectiks.firebaseapp.com",
+        projectId: "yarik-projectiks",
+        storageBucket: "yarik-projectiks.firebasestorage.app",
+        messagingSenderId: "ТВОЙ_ID",
+        appId: "ТВОЙ_APP_ID"
     };
+    // ---------------------------------------------------------------------------
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
-    const storage = getStorage(app); // Инициализация хранилища
+    const storage = getStorage(app); 
     window.db = db;
 
     // --- ЛОГИКА АВТОРИЗАЦИИ ---
@@ -125,40 +127,50 @@
         }
     });
 
-    // --- ОТПРАВКА ДАННЫХ И КАРТИНКИ ---
+    // --- ИСПРАВЛЕННАЯ ЛОГИКА ОТПРАВКИ (С ЗАЩИТОЙ ОТ ЗАВИСАНИЯ) ---
     document.getElementById('sendBtn').onclick = async () => {
         const btn = document.getElementById('sendBtn');
+        
+        // Блокируем кнопку на время загрузки
         btn.disabled = true;
-        btn.innerText = 'Загрузка...';
+        btn.innerText = 'Загрузка в облако...';
 
         try {
             let imageUrl = null;
             
-            // Если пользователь выбрал файл, сначала загружаем его в Storage
+            // Загружаем картинку в Storage, если она выбрана
             if (selectedImageFile) {
-                const imageRef = ref(storage, `images/${Date.now()}_${selectedImageFile.name}`);
+                // Генерируем уникальное имя файла
+                const imageRef = ref(storage, 'images/' + Date.now() + '_' + selectedImageFile.name);
                 await uploadBytes(imageRef, selectedImageFile);
-                imageUrl = await getDownloadURL(imageRef); // Получаем публичную ссылку на картинку
+                imageUrl = await getDownloadURL(imageRef);
             }
 
-            // Затем сохраняем пост в Firestore (с ссылкой на картинку, если она есть)
+            // Добавляем запись в базу данных
             await addDoc(collection(db, "requests"), {
                 name: document.getElementById('userName').value,
                 email: document.getElementById('userEmail').value,
-                imageUrl: imageUrl, // Добавляем ссылку в базу
+                imageUrl: imageUrl, // Сохраняем ссылку на картинку
                 likes: 0,
                 timestamp: serverTimestamp()
             });
 
-            // Очищаем форму
+            // Очищаем форму после успешной отправки
             document.getElementById('imageInput').value = '';
+            document.getElementById('imagePreview').src = '';
             document.getElementById('imagePreview').style.display = 'none';
             selectedImageFile = null;
+            
+            // Если все прошло успешно
+            console.log("Пост успешно отправлен!");
 
-        } catch (e) {
-            console.error("Ошибка:", e);
-            alert("Ошибка публикации: " + e.message);
+        } catch (error) {
+            // Если произошла ошибка (например Storage не включен) - покажем её!
+            console.error("Ошибка при публикации:", error);
+            alert("Ошибка загрузки: " + error.message + "\nУбедитесь, что Storage включен в консоли Firebase!");
         } finally {
+            // Этот блок выполнится в ЛЮБОМ случае (успех или ошибка)
+            // Кнопка снова станет активной
             btn.disabled = false;
             btn.innerText = 'Опубликовать';
         }
@@ -184,8 +196,8 @@
                 const id = sDoc.id;
                 totalLikesCount += (data.likes || 0);
 
-                // Если в базе есть ссылка на картинку, создаем тег <img>
-                const imageHtml = data.imageUrl ? `<img src="${data.imageUrl}" class="post-image" alt="Post Image">` : '';
+                // Отрисовка картинки, если она есть в базе
+                const imageHtml = data.imageUrl ? `<img src="${data.imageUrl}" class="post-image" alt="Прикрепленное фото">` : '';
 
                 const post = document.createElement('div');
                 post.className = 'user-post';
@@ -208,6 +220,7 @@
                     await updateDoc(doc(db, "requests", id), { likes: increment(1) });
                 };
             });
+            
             document.getElementById('totalPosts').innerText = snapshot.size;
             document.getElementById('totalLikes').innerText = totalLikesCount;
         });
@@ -221,6 +234,7 @@
         loadFeed();
     };
 
+    // Запуск ленты
     loadFeed();
 </script>
 
