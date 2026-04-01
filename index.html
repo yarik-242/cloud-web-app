@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloud App | Auth & Images</title>
+    <title>Cloud App | Auth, Images & DM</title>
     <style>
         :root { --primary: #6366f1; --bg: #f1f5f9; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 40px 20px; margin: 0; }
         
         .card { background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.05); width: 100%; max-width: 350px; text-align: center; margin-bottom: 20px; }
         h2 { color: #1e293b; margin: 0 0 1rem; }
-        input[type="text"], input[type="email"] { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #e2e8f0; border-radius: 8px; box-sizing: border-box; outline: none; }
-        
-        /* Стили для загрузки файла */
+        input[type="text"], input[type="email"], textarea { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #e2e8f0; border-radius: 8px; box-sizing: border-box; outline: none; font-family: inherit; }
+        textarea { resize: vertical; }
+
         .file-input-container { margin-bottom: 15px; text-align: left; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px dashed #cbd5e1; }
         .file-input-container input[type="file"] { width: 100%; font-size: 0.9rem; color: #64748b; cursor: pointer; }
         #imagePreview { display: none; width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 15px; border: 1px solid #e2e8f0; }
@@ -22,6 +22,8 @@
         .send-btn:disabled { background: #94a3b8; cursor: not-allowed; }
         .logout-btn { background: #ef4444; margin-top: 10px; }
         .logout-btn:hover { background: #dc2626; }
+        .dm-btn { background: #10b981; }
+        .dm-btn:hover { background: #059669; }
 
         .user-profile { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 15px; background: #f8fafc; padding: 10px; border-radius: 8px; }
         .user-profile img { border-radius: 50%; width: 35px; height: 35px; }
@@ -32,45 +34,70 @@
         .filter-btn { background: #e2e8f0; color: #475569; padding: 10px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 20px; width: 100%; max-width: 400px; }
         .filter-btn.active { background: #f59e0b; color: white; }
 
-        #feed { width: 100%; max-width: 400px; }
-        .user-post { background: white; padding: 15px 20px; margin-bottom: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-left: 5px solid var(--primary); }
+        #feed, #dmFeed { width: 100%; text-align: left; }
+        .user-post, .dm-message { background: white; padding: 15px 20px; margin-bottom: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-left: 5px solid var(--primary); }
+        .dm-message { border-left-color: #10b981; background: #f0fdf4; }
         .user-post img.post-image { width: 100%; max-height: 300px; object-fit: cover; border-radius: 8px; margin: 10px 0; }
         .user-info strong { display: block; color: #1e293b; }
         .user-info span { color: #64748b; font-size: 0.85rem; }
         .like-container { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
         .heart-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #3b82f6; padding: 0; }
+        
+        .main-container { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; width: 100%; max-width: 900px; align-items: flex-start; }
+        .column { display: flex; flex-direction: column; width: 100%; max-width: 400px; }
     </style>
 </head>
 <body>
 
 <div class="card" id="authCard">
     <h2>Требуется вход 🔒</h2>
-    <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 15px;">Только авторизованные пользователи могут делать публикации.</p>
+    <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 15px;">Только авторизованные пользователи могут делать публикации и писать сообщения.</p>
     <button class="send-btn" id="loginBtn">Вход через Google</button>
 </div>
 
-<div class="card" id="postForm" style="display: none;">
-    <div class="user-profile" id="userProfile"></div>
-    <input type="text" id="userName" readonly style="background: #f1f5f9; cursor: not-allowed;">
-    <input type="email" id="userEmail" readonly style="background: #f1f5f9; cursor: not-allowed;">
+<div class="main-container" id="mainApp" style="display: none;">
     
-    <div class="file-input-container">
-        <label style="font-size: 0.85rem; font-weight: bold; color: #1e293b; display: block; margin-bottom: 8px;">Прикрепить фото:</label>
-        <input type="file" id="imageInput" accept="image/*">
+    <div class="column">
+        <div class="card" id="postForm" style="max-width: 100%;">
+            <div class="user-profile" id="userProfile"></div>
+            <input type="text" id="userName" readonly style="background: #f1f5f9; cursor: not-allowed;">
+            <input type="email" id="userEmail" readonly style="background: #f1f5f9; cursor: not-allowed;">
+            
+            <div class="file-input-container">
+                <label style="font-size: 0.85rem; font-weight: bold; display: block; margin-bottom: 8px;">Прикрепить фото:</label>
+                <input type="file" id="imageInput" accept="image/*">
+            </div>
+            <img id="imagePreview" alt="Предпросмотр">
+            
+            <button class="send-btn" id="sendBtn">Опубликовать в ленту</button>
+            <button class="send-btn logout-btn" id="logoutBtn">Выйти из аккаунта</button>
+        </div>
+
+        <div class="stats-panel" style="max-width: 100%;">
+            <div class="stat-item">Постов: <span id="totalPosts">0</span></div>
+            <div class="stat-item">Лайков: <span id="totalLikes">0</span></div>
+        </div>
+
+        <button class="filter-btn" id="filterBtn" style="max-width: 100%;">🔥 Популярные (> 2 лайков)</button>
+        <div id="feed"></div>
     </div>
-    <img id="imagePreview" alt="Предпросмотр">
-    
-    <button class="send-btn" id="sendBtn">Опубликовать</button>
-    <button class="send-btn logout-btn" id="logoutBtn">Выйти из аккаунта</button>
-</div>
 
-<div class="stats-panel">
-    <div class="stat-item">Всего постов: <span id="totalPosts">0</span></div>
-    <div class="stat-item">Собрано лайков: <span id="totalLikes">0</span></div>
-</div>
+    <div class="column">
+        <div class="card" style="max-width: 100%;">
+            <h2>Личные сообщения ✉️</h2>
+            <input type="email" id="dmReceiver" placeholder="Email получателя" required>
+            <textarea id="dmText" placeholder="Напишите сообщение..." rows="3" required></textarea>
+            <button class="send-btn dm-btn" id="sendDmBtn">Отправить сообщение</button>
+        </div>
 
-<button class="filter-btn" id="filterBtn">🔥 Показать популярные (> 2 лайков)</button>
-<div id="feed"></div>
+        <div class="card" style="max-width: 100%; background: transparent; box-shadow: none; padding: 0;">
+            <h3 style="color: #1e293b; text-align: left; margin-bottom: 10px;">Входящие сообщения:</h3>
+            <div id="dmFeed">
+                </div>
+        </div>
+    </div>
+
+</div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -78,22 +105,25 @@
     import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-    // --- ВНИМАНИЕ: ВСТАВЬ СЮДА СВОЙ НОВЫЙ FIREBASE CONFIG ОТ Yarik-projectiks ---
+    // --- ЗДЕСЯ FIREBASE CONFIG ---
     const firebaseConfig = {
-        apiKey: "ТВОЙ_КЛЮЧ",
-        authDomain: "yarik-projectiks.firebaseapp.com",
-        projectId: "yarik-projectiks",
-        storageBucket: "yarik-projectiks.firebasestorage.app",
-        messagingSenderId: "ТВОЙ_ID",
-        appId: "ТВОЙ_APP_ID"
-    };
-    // ---------------------------------------------------------------------------
+    apiKey: "AIzaSyCw3ttPKMx-jAd1IL-5IZRdA4KVAMYdSgA",
+    authDomain: "projctick.firebaseapp.com",
+    projectId: "projctick",
+    storageBucket: "projctick.firebasestorage.app",
+    messagingSenderId: "639615889635",
+    appId: "1:639615889635:web:f591a1ebf29ae95e75d5d6",
+    measurementId: "G-XL8TQLV7BB"
+  };
+    // --------------------------------------------------------
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
     const storage = getStorage(app); 
     window.db = db;
+
+    let dmUnsubscribe = null;
 
     // --- ЛОГИКА АВТОРИЗАЦИИ ---
     document.getElementById('loginBtn').onclick = () => signInWithPopup(auth, new GoogleAuthProvider());
@@ -102,17 +132,94 @@
     onAuthStateChanged(auth, (user) => {
         if (user) {
             document.getElementById('authCard').style.display = 'none';
-            document.getElementById('postForm').style.display = 'block';
+            document.getElementById('mainApp').style.display = 'flex'; // Показываем обе колонки
             document.getElementById('userProfile').innerHTML = `<img src="${user.photoURL}"> <span>Привет, ${user.displayName.split(' ')[0]}!</span>`;
             document.getElementById('userName').value = user.displayName;
             document.getElementById('userEmail').value = user.email;
+            
+            loadFeed(); // Грузим ленту
+            loadDMs(user.email); // Грузим личные сообщения для этого юзера
         } else {
             document.getElementById('authCard').style.display = 'block';
-            document.getElementById('postForm').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'none';
+            if (dmUnsubscribe) dmUnsubscribe();
         }
     });
 
-    // --- ЛОГИКА ПРЕДПРОСМОТРА КАРТИНКИ ---
+    // --- ЛОГИКА ОТПРАВКИ ЛИЧНОГО СООБЩЕНИЯ (DM) ---
+    document.getElementById('sendDmBtn').onclick = async () => {
+        const receiverEmail = document.getElementById('dmReceiver').value.trim();
+        const text = document.getElementById('dmText').value.trim();
+        const btn = document.getElementById('sendDmBtn');
+
+        if (!receiverEmail || !text) return alert("Заполните email получателя и текст!");
+
+        btn.disabled = true;
+        btn.innerText = 'Отправка...';
+
+        try {
+            await addDoc(collection(db, "messages"), {
+                senderEmail: auth.currentUser.email,
+                receiverEmail: receiverEmail,
+                text: text,
+                timestamp: serverTimestamp()
+            });
+            
+            document.getElementById('dmReceiver').value = '';
+            document.getElementById('dmText').value = '';
+            alert("Сообщение успешно отправлено!");
+        } catch (error) {
+            console.error("Ошибка DM:", error);
+            alert("Ошибка: " + error.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = 'Отправить сообщение';
+        }
+    };
+
+    // --- ЛОГИКА ЗАГРУЗКИ ВХОДЯЩИХ СООБЩЕНИЙ ---
+    function loadDMs(myEmail) {
+        if (dmUnsubscribe) dmUnsubscribe();
+        
+        // Ищем сообщения, где я - получатель
+        const q = query(collection(db, "messages"), where("receiverEmail", "==", myEmail));
+        
+        dmUnsubscribe = onSnapshot(q, (snapshot) => {
+            const feed = document.getElementById('dmFeed');
+            feed.innerHTML = ""; 
+            
+            if (snapshot.empty) {
+                feed.innerHTML = "<p style='color: #64748b; font-size: 0.9rem;'>Нет новых сообщений.</p>";
+                return;
+            }
+
+            // Сортируем локально по времени (чтобы не требовать создания индекса в Firebase)
+            const docs = snapshot.docs.map(doc => doc.data());
+            docs.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+
+            docs.forEach((data) => {
+                // Форматируем дату
+                let timeString = "Только что";
+                if (data.timestamp) {
+                    const date = new Date(data.timestamp.seconds * 1000);
+                    timeString = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                }
+
+                const post = document.createElement('div');
+                post.className = 'dm-message';
+                post.innerHTML = `
+                    <div class="user-info" style="margin-bottom: 8px;">
+                        <span>От кого: <strong>${data.senderEmail}</strong></span>
+                        <span style="font-size: 0.75rem;">${timeString}</span>
+                    </div>
+                    <div style="color: #1e293b; font-size: 0.95rem;">${data.text}</div>
+                `;
+                feed.appendChild(post);
+            });
+        });
+    }
+
+    // --- ЛОГИКА ПРЕДПРОСМОТРА И ОТПРАВКИ ПОСТОВ В ЛЕНТУ (оставлена без изменений) ---
     let selectedImageFile = null;
     document.getElementById('imageInput').addEventListener('change', (e) => {
         const file = e.target.files[0];
@@ -127,66 +234,47 @@
         }
     });
 
-    // --- ИСПРАВЛЕННАЯ ЛОГИКА ОТПРАВКИ (С ЗАЩИТОЙ ОТ ЗАВИСАНИЯ) ---
     document.getElementById('sendBtn').onclick = async () => {
         const btn = document.getElementById('sendBtn');
-        
-        // Блокируем кнопку на время загрузки
         btn.disabled = true;
-        btn.innerText = 'Загрузка в облако...';
+        btn.innerText = 'Загрузка...';
 
         try {
             let imageUrl = null;
-            
-            // Загружаем картинку в Storage, если она выбрана
             if (selectedImageFile) {
-                // Генерируем уникальное имя файла
                 const imageRef = ref(storage, 'images/' + Date.now() + '_' + selectedImageFile.name);
                 await uploadBytes(imageRef, selectedImageFile);
                 imageUrl = await getDownloadURL(imageRef);
             }
-
-            // Добавляем запись в базу данных
             await addDoc(collection(db, "requests"), {
                 name: document.getElementById('userName').value,
                 email: document.getElementById('userEmail').value,
-                imageUrl: imageUrl, // Сохраняем ссылку на картинку
+                imageUrl: imageUrl, 
                 likes: 0,
                 timestamp: serverTimestamp()
             });
 
-            // Очищаем форму после успешной отправки
             document.getElementById('imageInput').value = '';
-            document.getElementById('imagePreview').src = '';
             document.getElementById('imagePreview').style.display = 'none';
             selectedImageFile = null;
-            
-            // Если все прошло успешно
-            console.log("Пост успешно отправлен!");
-
         } catch (error) {
-            // Если произошла ошибка (например Storage не включен) - покажем её!
-            console.error("Ошибка при публикации:", error);
-            alert("Ошибка загрузки: " + error.message + "\nУбедитесь, что Storage включен в консоли Firebase!");
+            alert("Ошибка загрузки: " + error.message);
         } finally {
-            // Этот блок выполнится в ЛЮБОМ случае (успех или ошибка)
-            // Кнопка снова станет активной
             btn.disabled = false;
-            btn.innerText = 'Опубликовать';
+            btn.innerText = 'Опубликовать в ленту';
         }
     };
 
-    // --- РЕНДЕР ЛЕНТЫ ---
-    let unsubscribe = null; 
+    let feedUnsubscribe = null; 
     let isFiltered = false; 
 
     function loadFeed() {
-        if (unsubscribe) unsubscribe(); 
+        if (feedUnsubscribe) feedUnsubscribe(); 
         let q = isFiltered 
             ? query(collection(db, "requests"), where("likes", ">", 2), orderBy("likes", "desc"))
             : query(collection(db, "requests"), orderBy("timestamp", "desc"));
         
-        unsubscribe = onSnapshot(q, (snapshot) => {
+        feedUnsubscribe = onSnapshot(q, (snapshot) => {
             const feed = document.getElementById('feed');
             feed.innerHTML = ""; 
             let totalLikesCount = 0; 
@@ -196,8 +284,7 @@
                 const id = sDoc.id;
                 totalLikesCount += (data.likes || 0);
 
-                // Отрисовка картинки, если она есть в базе
-                const imageHtml = data.imageUrl ? `<img src="${data.imageUrl}" class="post-image" alt="Прикрепленное фото">` : '';
+                const imageHtml = data.imageUrl ? `<img src="${data.imageUrl}" class="post-image">` : '';
 
                 const post = document.createElement('div');
                 post.className = 'user-post';
@@ -216,11 +303,10 @@
 
                 document.getElementById(`btn-${id}`).onclick = async (e) => {
                     e.preventDefault();
-                    if (!auth.currentUser) return alert("Войдите, чтобы ставить лайки!");
+                    if (!auth.currentUser) return;
                     await updateDoc(doc(db, "requests", id), { likes: increment(1) });
                 };
             });
-            
             document.getElementById('totalPosts').innerText = snapshot.size;
             document.getElementById('totalLikes').innerText = totalLikesCount;
         });
@@ -230,12 +316,9 @@
     filterBtn.onclick = () => {
         isFiltered = !isFiltered;
         filterBtn.classList.toggle('active');
-        filterBtn.innerText = isFiltered ? "🔙 Показать все посты" : "🔥 Показать популярные (> 2 лайков)";
+        filterBtn.innerText = isFiltered ? "🔙 Показать все посты" : "🔥 Популярные (> 2 лайков)";
         loadFeed();
     };
-
-    // Запуск ленты
-    loadFeed();
 </script>
 
 </body>
