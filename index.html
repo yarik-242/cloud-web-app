@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloud App | Auth, Images & DM</title>
+    <title>Cloud App | Feed & DM</title>
     <style>
-        :root { --primary: #6366f1; --bg: #f1f5f9; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 40px 20px; margin: 0; }
+        :root { --primary: #6366f1; --bg: #f1f5f9; --accent: #10b981; --danger: #ef4444; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px 10px; margin: 0; }
         
-        .card { background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.05); width: 100%; max-width: 350px; text-align: center; margin-bottom: 20px; }
-        h2 { color: #1e293b; margin: 0 0 1rem; }
+        .card { background: white; padding: 1.5rem; border-radius: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.05); width: 100%; max-width: 400px; text-align: center; margin-bottom: 20px; box-sizing: border-box; }
+        h2 { color: #1e293b; margin: 0 0 1rem; font-size: 1.5rem; }
+        h3 { color: #1e293b; margin: 0 0 1rem; font-size: 1.2rem; text-align: left;}
+        
         input[type="text"], input[type="email"], textarea { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #e2e8f0; border-radius: 8px; box-sizing: border-box; outline: none; font-family: inherit; }
         textarea { resize: vertical; }
 
@@ -17,34 +19,45 @@
         .file-input-container input[type="file"] { width: 100%; font-size: 0.9rem; color: #64748b; cursor: pointer; }
         #imagePreview { display: none; width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 15px; border: 1px solid #e2e8f0; }
 
-        .send-btn { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.3s; }
-        .send-btn:hover { background: #4f46e5; }
-        .send-btn:disabled { background: #94a3b8; cursor: not-allowed; }
-        .logout-btn { background: #ef4444; margin-top: 10px; }
-        .logout-btn:hover { background: #dc2626; }
-        .dm-btn { background: #10b981; }
-        .dm-btn:hover { background: #059669; }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.3s; color: white; margin-bottom: 10px;}
+        .btn-primary { background: var(--primary); }
+        .btn-primary:hover { background: #4f46e5; }
+        .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+        .btn-success { background: var(--accent); }
+        .btn-success:hover { background: #059669; }
+        .btn-danger { background: var(--danger); }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+        .btn-outline:hover { background: var(--primary); color: white; }
 
-        .user-profile { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 15px; background: #f8fafc; padding: 10px; border-radius: 8px; }
-        .user-profile img { border-radius: 50%; width: 35px; height: 35px; }
+        /* НАВИГАЦИЯ */
+        .nav-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 400px; background: white; padding: 10px 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; box-sizing: border-box; }
+        .nav-user { display: flex; align-items: center; gap: 10px; font-weight: bold; color: #1e293b;}
+        .nav-user img { width: 35px; height: 35px; border-radius: 50%; }
+        
+        .nav-buttons { display: flex; gap: 5px; }
+        .msg-btn { position: relative; background: var(--accent); color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .msg-badge { position: absolute; top: -5px; right: -5px; background: var(--danger); color: white; font-size: 0.75rem; padding: 2px 6px; border-radius: 10px; display: none; }
+        .logout-icon-btn { background: var(--danger); color: white; border: none; padding: 8px 10px; border-radius: 8px; cursor: pointer; font-weight: bold; }
 
-        .stats-panel { background: #1e293b; color: white; padding: 15px; border-radius: 12px; width: 100%; max-width: 370px; display: flex; justify-content: space-around; margin-bottom: 15px; }
+        .stats-panel { background: #1e293b; color: white; padding: 15px; border-radius: 12px; width: 100%; max-width: 400px; display: flex; justify-content: space-around; margin-bottom: 15px; box-sizing: border-box;}
         .stat-item span { display: block; font-size: 1.5rem; font-weight: bold; color: #3b82f6; text-align: center; }
         
         .filter-btn { background: #e2e8f0; color: #475569; padding: 10px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 20px; width: 100%; max-width: 400px; }
         .filter-btn.active { background: #f59e0b; color: white; }
 
-        #feed, #dmFeed { width: 100%; text-align: left; }
-        .user-post, .dm-message { background: white; padding: 15px 20px; margin-bottom: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-left: 5px solid var(--primary); }
-        .dm-message { border-left-color: #10b981; background: #f0fdf4; }
+        #feed, #dmFeed { width: 100%; max-width: 400px; text-align: left; }
+        .user-post, .dm-message { background: white; padding: 15px 20px; margin-bottom: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-left: 5px solid var(--primary); box-sizing: border-box; }
+        .dm-message { border-left-color: var(--accent); background: #f0fdf4; }
         .user-post img.post-image { width: 100%; max-height: 300px; object-fit: cover; border-radius: 8px; margin: 10px 0; }
         .user-info strong { display: block; color: #1e293b; }
         .user-info span { color: #64748b; font-size: 0.85rem; }
         .like-container { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
         .heart-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #3b82f6; padding: 0; }
         
-        .main-container { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; width: 100%; max-width: 900px; align-items: flex-start; }
-        .column { display: flex; flex-direction: column; width: 100%; max-width: 400px; }
+        /* Секции (вкладки) */
+        #feedSection { display: none; width: 100%; display: flex; flex-direction: column; align-items: center; }
+        #dmSection { display: none; width: 100%; display: flex; flex-direction: column; align-items: center; }
     </style>
 </head>
 <body>
@@ -52,51 +65,60 @@
 <div class="card" id="authCard">
     <h2>Требуется вход 🔒</h2>
     <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 15px;">Только авторизованные пользователи могут делать публикации и писать сообщения.</p>
-    <button class="send-btn" id="loginBtn">Вход через Google</button>
+    <button class="btn btn-primary" id="loginBtn">Вход через Google</button>
 </div>
 
-<div class="main-container" id="mainApp" style="display: none;">
-    
-    <div class="column">
-        <div class="card" id="postForm" style="max-width: 100%;">
-            <div class="user-profile" id="userProfile"></div>
-            <input type="text" id="userName" readonly style="background: #f1f5f9; cursor: not-allowed;">
-            <input type="email" id="userEmail" readonly style="background: #f1f5f9; cursor: not-allowed;">
-            
-            <div class="file-input-container">
-                <label style="font-size: 0.85rem; font-weight: bold; display: block; margin-bottom: 8px;">Прикрепить фото:</label>
-                <input type="file" id="imageInput" accept="image/*">
+<div class="nav-bar" id="navBar" style="display: none;">
+    <div class="nav-user" id="navUserProfile">
+        </div>
+    <div class="nav-buttons">
+        <button class="msg-btn" id="goToDmBtn">
+            ✉️ Сообщения
+            <span class="msg-badge" id="msgBadge">0</span>
+        </button>
+        <button class="logout-icon-btn" id="logoutBtn" title="Выйти">🚪</button>
+    </div>
+</div>
+
+<div id="feedSection">
+    <div class="card">
+        <h3>Новая публикация</h3>
+        <input type="text" id="userName" readonly style="background: #f1f5f9; display: none;">
+        <input type="email" id="userEmail" readonly style="background: #f1f5f9; display: none;">
+        
+        <div class="file-input-container">
+            <label style="font-size: 0.85rem; font-weight: bold; display: block; margin-bottom: 8px;">Прикрепить фото:</label>
+            <input type="file" id="imageInput" accept="image/*">
+        </div>
+        <img id="imagePreview" alt="Предпросмотр">
+        
+        <button class="btn btn-primary" id="sendBtn">Опубликовать в ленту</button>
+    </div>
+
+    <div class="stats-panel">
+        <div class="stat-item">Постов: <span id="totalPosts">0</span></div>
+        <div class="stat-item">Лайков: <span id="totalLikes">0</span></div>
+    </div>
+
+    <button class="filter-btn" id="filterBtn">🔥 Популярные (> 2 лайков)</button>
+    <div id="feed"></div>
+</div>
+
+<div id="dmSection">
+    <button class="btn btn-outline" id="backToFeedBtn" style="max-width: 400px; margin-bottom: 20px;">⬅ Назад в ленту</button>
+
+    <div class="card">
+        <h2>Написать сообщение ✉️</h2>
+        <input type="email" id="dmReceiver" placeholder="Email получателя" required>
+        <textarea id="dmText" placeholder="Напишите сообщение..." rows="3" required></textarea>
+        <button class="btn btn-success" id="sendDmBtn">Отправить</button>
+    </div>
+
+    <div style="width: 100%; max-width: 400px;">
+        <h3>Входящие:</h3>
+        <div id="dmFeed">
             </div>
-            <img id="imagePreview" alt="Предпросмотр">
-            
-            <button class="send-btn" id="sendBtn">Опубликовать в ленту</button>
-            <button class="send-btn logout-btn" id="logoutBtn">Выйти из аккаунта</button>
-        </div>
-
-        <div class="stats-panel" style="max-width: 100%;">
-            <div class="stat-item">Постов: <span id="totalPosts">0</span></div>
-            <div class="stat-item">Лайков: <span id="totalLikes">0</span></div>
-        </div>
-
-        <button class="filter-btn" id="filterBtn" style="max-width: 100%;">🔥 Популярные (> 2 лайков)</button>
-        <div id="feed"></div>
     </div>
-
-    <div class="column">
-        <div class="card" style="max-width: 100%;">
-            <h2>Личные сообщения ✉️</h2>
-            <input type="email" id="dmReceiver" placeholder="Email получателя" required>
-            <textarea id="dmText" placeholder="Напишите сообщение..." rows="3" required></textarea>
-            <button class="send-btn dm-btn" id="sendDmBtn">Отправить сообщение</button>
-        </div>
-
-        <div class="card" style="max-width: 100%; background: transparent; box-shadow: none; padding: 0;">
-            <h3 style="color: #1e293b; text-align: left; margin-bottom: 10px;">Входящие сообщения:</h3>
-            <div id="dmFeed">
-                </div>
-        </div>
-    </div>
-
 </div>
 
 <script type="module">
@@ -105,17 +127,17 @@
     import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-    // --- ЗДЕСЯ FIREBASE CONFIG ---
+    // --- ВНИМ:ЗДС СВОЙ FIREBASE CONFIG ---
     const firebaseConfig = {
-    apiKey: "AIzaSyCw3ttPKMx-jAd1IL-5IZRdA4KVAMYdSgA",
-    authDomain: "projctick.firebaseapp.com",
-    projectId: "projctick",
-    storageBucket: "projctick.firebasestorage.app",
-    messagingSenderId: "639615889635",
-    appId: "1:639615889635:web:f591a1ebf29ae95e75d5d6",
-    measurementId: "G-XL8TQLV7BB"
-  };
-    // --------------------------------------------------------
+        apiKey: "AIzaSyCw3ttPKMx-jAd1IL-5IZRdA4KVAMYdSgA",
+        authDomain: "projctick.firebaseapp.com",
+        projectId: "projctick",
+        storageBucket: "projctick.firebasestorage.app",
+        messagingSenderId: "639615889635",
+        appId: "1:639615889635:web:f591a1ebf29ae95e75d5d6",
+        measurementId: "G-XL8TQLV7BB"
+};
+    // ------------------------------------------------------------------
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
@@ -124,6 +146,21 @@
     window.db = db;
 
     let dmUnsubscribe = null;
+    let feedUnsubscribe = null; 
+
+    // --- ЛОГИКА ПЕРЕКЛЮЧЕНИЯ ВСТРАНИЦ (SPA) ---
+    const feedSection = document.getElementById('feedSection');
+    const dmSection = document.getElementById('dmSection');
+
+    document.getElementById('goToDmBtn').onclick = () => {
+        feedSection.style.display = 'none';
+        dmSection.style.display = 'flex';
+    };
+
+    document.getElementById('backToFeedBtn').onclick = () => {
+        dmSection.style.display = 'none';
+        feedSection.style.display = 'flex';
+    };
 
     // --- ЛОГИКА АВТОРИЗАЦИИ ---
     document.getElementById('loginBtn').onclick = () => signInWithPopup(auth, new GoogleAuthProvider());
@@ -132,21 +169,77 @@
     onAuthStateChanged(auth, (user) => {
         if (user) {
             document.getElementById('authCard').style.display = 'none';
-            document.getElementById('mainApp').style.display = 'flex'; // Показываем обе колонки
-            document.getElementById('userProfile').innerHTML = `<img src="${user.photoURL}"> <span>Привет, ${user.displayName.split(' ')[0]}!</span>`;
+            document.getElementById('navBar').style.display = 'flex';
+            feedSection.style.display = 'flex'; // По умолчанию показываем ленту
+            dmSection.style.display = 'none';
+
+            // Настройка профиля в шапке
+            document.getElementById('navUserProfile').innerHTML = `<img src="${user.photoURL}"> <span>${user.displayName.split(' ')[0]}</span>`;
             document.getElementById('userName').value = user.displayName;
             document.getElementById('userEmail').value = user.email;
             
-            loadFeed(); // Грузим ленту
-            loadDMs(user.email); // Грузим личные сообщения для этого юзера
+            loadFeed(); 
+            loadDMs(user.email); // Слушаем сообщения для индикатора
         } else {
             document.getElementById('authCard').style.display = 'block';
-            document.getElementById('mainApp').style.display = 'none';
+            document.getElementById('navBar').style.display = 'none';
+            feedSection.style.display = 'none';
+            dmSection.style.display = 'none';
             if (dmUnsubscribe) dmUnsubscribe();
+            if (feedUnsubscribe) feedUnsubscribe();
         }
     });
 
-    // --- ЛОГИКА ОТПРАВКИ ЛИЧНОГО СООБЩЕНИЯ (DM) ---
+    // --- ЛОГИКА ЛИЧНЫХ СООБЩЕНИЙ И ИНДИКАТОРА ---
+    function loadDMs(myEmail) {
+        if (dmUnsubscribe) dmUnsubscribe();
+        
+        const q = query(collection(db, "messages"), where("receiverEmail", "==", myEmail));
+        
+        dmUnsubscribe = onSnapshot(q, (snapshot) => {
+            const feed = document.getElementById('dmFeed');
+            const badge = document.getElementById('msgBadge');
+            
+            feed.innerHTML = ""; 
+            
+            // Обновляем бейдж с количеством сообщений!
+            const msgCount = snapshot.size;
+            if (msgCount > 0) {
+                badge.innerText = msgCount;
+                badge.style.display = 'inline-block';
+            } else {
+                badge.style.display = 'none';
+            }
+
+            if (snapshot.empty) {
+                feed.innerHTML = "<p style='color: #64748b;'>У вас пока нет сообщений.</p>";
+                return;
+            }
+
+            const docs = snapshot.docs.map(doc => doc.data());
+            docs.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+
+            docs.forEach((data) => {
+                let timeString = "Только что";
+                if (data.timestamp) {
+                    const date = new Date(data.timestamp.seconds * 1000);
+                    timeString = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                }
+
+                const post = document.createElement('div');
+                post.className = 'dm-message';
+                post.innerHTML = `
+                    <div class="user-info" style="margin-bottom: 8px;">
+                        <span>От: <strong>${data.senderEmail}</strong></span>
+                        <span style="font-size: 0.75rem; float:right;">${timeString}</span>
+                    </div>
+                    <div style="color: #1e293b; font-size: 0.95rem;">${data.text}</div>
+                `;
+                feed.appendChild(post);
+            });
+        });
+    }
+
     document.getElementById('sendDmBtn').onclick = async () => {
         const receiverEmail = document.getElementById('dmReceiver').value.trim();
         const text = document.getElementById('dmText').value.trim();
@@ -173,53 +266,11 @@
             alert("Ошибка: " + error.message);
         } finally {
             btn.disabled = false;
-            btn.innerText = 'Отправить сообщение';
+            btn.innerText = 'Отправить';
         }
     };
 
-    // --- ЛОГИКА ЗАГРУЗКИ ВХОДЯЩИХ СООБЩЕНИЙ ---
-    function loadDMs(myEmail) {
-        if (dmUnsubscribe) dmUnsubscribe();
-        
-        // Ищем сообщения, где я - получатель
-        const q = query(collection(db, "messages"), where("receiverEmail", "==", myEmail));
-        
-        dmUnsubscribe = onSnapshot(q, (snapshot) => {
-            const feed = document.getElementById('dmFeed');
-            feed.innerHTML = ""; 
-            
-            if (snapshot.empty) {
-                feed.innerHTML = "<p style='color: #64748b; font-size: 0.9rem;'>Нет новых сообщений.</p>";
-                return;
-            }
-
-            // Сортируем локально по времени (чтобы не требовать создания индекса в Firebase)
-            const docs = snapshot.docs.map(doc => doc.data());
-            docs.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-
-            docs.forEach((data) => {
-                // Форматируем дату
-                let timeString = "Только что";
-                if (data.timestamp) {
-                    const date = new Date(data.timestamp.seconds * 1000);
-                    timeString = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                }
-
-                const post = document.createElement('div');
-                post.className = 'dm-message';
-                post.innerHTML = `
-                    <div class="user-info" style="margin-bottom: 8px;">
-                        <span>От кого: <strong>${data.senderEmail}</strong></span>
-                        <span style="font-size: 0.75rem;">${timeString}</span>
-                    </div>
-                    <div style="color: #1e293b; font-size: 0.95rem;">${data.text}</div>
-                `;
-                feed.appendChild(post);
-            });
-        });
-    }
-
-    // --- ЛОГИКА ПРЕДПРОСМОТРА И ОТПРАВКИ ПОСТОВ В ЛЕНТУ (оставлена без изменений) ---
+    // --- ЛОГИКА ПОСТОВ (КАК БЫЛО РАНЬШЕ) ---
     let selectedImageFile = null;
     document.getElementById('imageInput').addEventListener('change', (e) => {
         const file = e.target.files[0];
@@ -265,7 +316,6 @@
         }
     };
 
-    let feedUnsubscribe = null; 
     let isFiltered = false; 
 
     function loadFeed() {
