@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloud App | Feed & DM</title>
+    <title>Cloud App | Feed & DM & Status</title>
     <style>
         :root { --primary: #6366f1; --bg: #f1f5f9; --accent: #10b981; --danger: #ef4444; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px 10px; margin: 0; }
@@ -56,8 +56,14 @@
         .heart-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #3b82f6; padding: 0; }
         
         /* Секции (вкладки) */
-        #feedSection { display: none; width: 100%; display: flex; flex-direction: column; align-items: center; }
-        #dmSection { display: none; width: 100%; display: flex; flex-direction: column; align-items: center; }
+        #feedSection { display: none; width: 100%; flex-direction: column; align-items: center; }
+        #dmSection { display: none; width: 100%; flex-direction: column; align-items: center; }
+
+        /* SUPABASE СТИЛИ СТАТУСА */
+        .status-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .status-btn { border: none; padding: 10px; border-radius: 5px; color: white; cursor: pointer; font-weight: bold; }
+        .supa-user-item { display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #eee; text-align: left;}
+        .supa-dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; flex-shrink: 0;}
     </style>
 </head>
 <body>
@@ -69,8 +75,7 @@
 </div>
 
 <div class="nav-bar" id="navBar" style="display: none;">
-    <div class="nav-user" id="navUserProfile">
-        </div>
+    <div class="nav-user" id="navUserProfile"></div>
     <div class="nav-buttons">
         <button class="msg-btn" id="goToDmBtn">
             ✉️ Сообщения
@@ -81,8 +86,24 @@
 </div>
 
 <div id="feedSection">
+    
+    <div class="card" style="background: #e0f2fe; border: 1px solid #bae6fd;">
+        <h2>Мой статус в группе</h2>
+        <div id="my-supabase-name" style="font-weight: bold; color: #0369a1; margin-bottom: 10px;">Загрузка...</div>
+        <div class="status-buttons">
+            <button class="status-btn" style="background: #2ecc71" onclick="window.updateStatus('📚 Учусь', '#2ecc71')">📚 Учусь</button>
+            <button class="status-btn" style="background: #f1c40f; color: black" onclick="window.updateStatus('☕ Кофе', '#f1c40f')">☕ Кофе</button>
+            <button class="status-btn" style="background: #3498db" onclick="window.updateStatus('🎮 В игре', '#3498db')">🎮 В игре</button>
+            <button class="status-btn" style="background: #95a5a6" onclick="window.updateStatus('🏠 На связи', '#95a5a6')">🏠 На связи</button>
+        </div>
+    </div>
+
     <div class="card">
-        <h3>Новая публикация</h3>
+        <h3>Онлайн монитор (Supabase)</h3>
+        <div id="group-list" style="max-height: 200px; overflow-y: auto;"></div>
+    </div>
+    <div class="card">
+        <h3>Новая публикация (Firebase)</h3>
         <input type="text" id="userName" readonly style="background: #f1f5f9; display: none;">
         <input type="email" id="userEmail" readonly style="background: #f1f5f9; display: none;">
         
@@ -116,18 +137,69 @@
 
     <div style="width: 100%; max-width: 400px;">
         <h3>Входящие:</h3>
-        <div id="dmFeed">
-            </div>
+        <div id="dmFeed"></div>
     </div>
 </div>
 
 <script type="module">
+    // ИМПОРТЫ SUPABASE
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+    
+    // ИМПОРТЫ FIREBASE
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, increment, serverTimestamp, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-    // --- ВНИМ:ЗДС СВОЙ FIREBASE CONFIG ---
+    // =================================================================
+    // 1. НАСТРОЙКИ SUPABASE (ВСТАВЬ СВОЙ АНОНИМНЫЙ КЛЮЧ ВО ВТОРУЮ СТРОКУ)
+    // =================================================================
+    const SUPABASE_URL = https://mvyybofgbevtdrjxakgz.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_wOpOx1LKaZ5BeM3vhkeMUA_4ld7jrkP';
+    const MY_SUPABASE_ID = 'mvyybofgbevtdrjxakgz';
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Логика Supabase
+    window.updateStatus = async (text, color) => {
+        const { error } = await supabase
+            .from('profiles')
+            .update({ status: text, color: color })
+            .eq('id', MY_SUPABASE_ID);
+        
+        if (error) {
+            console.error(error);
+            alert("Ошибка смены статуса. Проверьте RLS политики в Supabase.");
+        } else {
+            fetchStatuses();
+        }
+    };
+
+    async function fetchStatuses() {
+        const { data, error } = await supabase.from('profiles').select('*').order('username');
+        if (error) return console.error(error);
+        
+        const list = document.getElementById('group-list');
+        list.innerHTML = data.map(user => `
+            <div class="supa-user-item">
+                <div class="supa-dot" style="background: ${user.color || '#ccc'}"></div>
+                <div><strong>${user.username}</strong>: ${user.status || '...'}</div>
+            </div>
+        `).join('');
+
+        const me = data.find(u => u.id === MY_SUPABASE_ID);
+        if (me) {
+            document.getElementById('my-supabase-name').innerText = `Текущий статус: ${me.status || 'Не задан'}`;
+        }
+    }
+
+    // Запускаем монитор Supabase
+    fetchStatuses();
+    setInterval(fetchStatuses, 5000); 
+
+    // =================================================================
+    // 2. НАСТРОЙКИ FIREBASE (ОСТАВЛЕНЫ ТВОИ ИЗ ПРОШЛОГО ЗАДАНИЯ)
+    // =================================================================
     const firebaseConfig = {
         apiKey: "AIzaSyCw3ttPKMx-jAd1IL-5IZRdA4KVAMYdSgA",
         authDomain: "projctick.firebaseapp.com",
@@ -136,8 +208,7 @@
         messagingSenderId: "639615889635",
         appId: "1:639615889635:web:f591a1ebf29ae95e75d5d6",
         measurementId: "G-XL8TQLV7BB"
-};
-    // ------------------------------------------------------------------
+    };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
@@ -148,7 +219,6 @@
     let dmUnsubscribe = null;
     let feedUnsubscribe = null; 
 
-    // --- ЛОГИКА ПЕРЕКЛЮЧЕНИЯ ВСТРАНИЦ (SPA) ---
     const feedSection = document.getElementById('feedSection');
     const dmSection = document.getElementById('dmSection');
 
@@ -162,7 +232,6 @@
         feedSection.style.display = 'flex';
     };
 
-    // --- ЛОГИКА АВТОРИЗАЦИИ ---
     document.getElementById('loginBtn').onclick = () => signInWithPopup(auth, new GoogleAuthProvider());
     document.getElementById('logoutBtn').onclick = () => signOut(auth);
 
@@ -170,16 +239,15 @@
         if (user) {
             document.getElementById('authCard').style.display = 'none';
             document.getElementById('navBar').style.display = 'flex';
-            feedSection.style.display = 'flex'; // По умолчанию показываем ленту
+            feedSection.style.display = 'flex'; 
             dmSection.style.display = 'none';
 
-            // Настройка профиля в шапке
             document.getElementById('navUserProfile').innerHTML = `<img src="${user.photoURL}"> <span>${user.displayName.split(' ')[0]}</span>`;
             document.getElementById('userName').value = user.displayName;
             document.getElementById('userEmail').value = user.email;
             
             loadFeed(); 
-            loadDMs(user.email); // Слушаем сообщения для индикатора
+            loadDMs(user.email); 
         } else {
             document.getElementById('authCard').style.display = 'block';
             document.getElementById('navBar').style.display = 'none';
@@ -190,10 +258,8 @@
         }
     });
 
-    // --- ЛОГИКА ЛИЧНЫХ СООБЩЕНИЙ И ИНДИКАТОРА ---
     function loadDMs(myEmail) {
         if (dmUnsubscribe) dmUnsubscribe();
-        
         const q = query(collection(db, "messages"), where("receiverEmail", "==", myEmail));
         
         dmUnsubscribe = onSnapshot(q, (snapshot) => {
@@ -202,7 +268,6 @@
             
             feed.innerHTML = ""; 
             
-            // Обновляем бейдж с количеством сообщений!
             const msgCount = snapshot.size;
             if (msgCount > 0) {
                 badge.innerText = msgCount;
@@ -270,7 +335,6 @@
         }
     };
 
-    // --- ЛОГИКА ПОСТОВ (КАК БЫЛО РАНЬШЕ) ---
     let selectedImageFile = null;
     document.getElementById('imageInput').addEventListener('change', (e) => {
         const file = e.target.files[0];
