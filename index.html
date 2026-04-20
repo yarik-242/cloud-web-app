@@ -232,7 +232,10 @@
         feedSection.style.display = 'flex';
     };
 
-    document.getElementById('loginBtn').onclick = () => signInWithPopup(auth, new GoogleAuthProvider());
+    // --- СТРОКА ЗАМЕНЫ НИЖЕ ---
+    document.getElementById('loginBtn').onclick = () => supabase.auth.signInWithOAuth({ provider: 'google' });
+    // --- КОНЕЦ ЗАМЕНЫ ---
+
     document.getElementById('logoutBtn').onclick = () => signOut(auth);
 
     onAuthStateChanged(auth, (user) => {
