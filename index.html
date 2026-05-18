@@ -142,36 +142,41 @@
 </div>
 
 <script type="module">
-    // ИМПОРТЫ SUPABASE
+    // ИМПОРТЫ
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
-    
-    // ИМПОРТЫ FIREBASE
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, increment, serverTimestamp, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-    // 1. НАСТРОЙКИ SUPABASE
-    
+    // 1. НАСТРОЙКИ (Твои данные)
     const SUPABASE_URL = 'https://mvyybofgbevtdrjxakgz.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_wOpOx1LKaZ5BeM3vhkeMUA_4ld7jrkP';
-    const MY_SUPABASE_ID = '30eecba6-8576-42b9-9c31-9c70f909bdb4';
+    const SUPABASE_KEY = 'sb_publishable_wOpOx1LKaZ5BeM3vhkeMUA_4ld7jrkP'; 
+    const firebaseConfig = {
+        apiKey: "AIzaSyCw3ttPKMx-jAd1IL-5IZRdA4KVAMYdSgA",
+        authDomain: "projctick.firebaseapp.com",
+        projectId: "projctick",
+        storageBucket: "projctick.firebasestorage.app",
+        messagingSenderId: "639615889635",
+        appId: "1:639615889635:web:f591a1ebf29ae95e75d5d6"
+    };
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
 
-    // Логика Supabase
+    let currentUser = null;
+
+    // 2. ЛОГИКА СТАТУСОВ (Supabase)
     window.updateStatus = async (text, color) => {
+        if (!currentUser) return alert("Войдите в систему!");
         const { error } = await supabase
             .from('profiles')
             .update({ status: text, color: color })
-            .eq('id', MY_SUPABASE_ID);
+            .eq('id', currentUser.id); // Используем ID вошедшего юзера
         
-        if (error) {
-            console.error(error);
-            alert("Ошибка смены статуса. Проверьте RLS политики в Supabase.");
-        } else {
-            fetchStatuses();
-        }
+        if (error) console.error(error);
+        else fetchStatuses();
     };
 
     async function fetchStatuses() {
@@ -182,59 +187,41 @@
         list.innerHTML = data.map(user => `
             <div class="supa-user-item">
                 <div class="supa-dot" style="background: ${user.color || '#ccc'}"></div>
-                <div><strong>${user.username}</strong>: ${user.status || '...'}</div>
+                <div><strong>${user.username || user.email}</strong>: ${user.status || '...'}</div>
             </div>
         `).join('');
 
-        const me = data.find(u => u.id === MY_SUPABASE_ID);
-        if (me) {
-            document.getElementById('my-supabase-name').innerText = `Текущий статус: ${me.status || 'Не задан'}`;
-        }
+        const me = data.find(u => u.id === currentUser?.id);
+        if (me) document.getElementById('my-supabase-name').innerText = `Твой статус: ${me.status || 'Не задан'}`;
     }
 
-    // Запускаем монитор Supabase
-    fetchStatuses();
-    setInterval(fetchStatuses, 5000); 
+    // 3. АВТОРИЗАЦИЯ (Supabase Auth Listener)
+    // Мы слушаем Supabase, так как кнопка входа работает через него
+    supabase.auth.onAuthStateChange((event, session) => {
+        const user = session?.user;
+        currentUser = user;
 
-    // =================================================================
-    // 2. НАСТРОЙКИ FIREBASE (ОСТАВЛЕНЫ ТВОИ ИЗ ПРОШЛОГО ЗАДАНИЯ)
-    // =================================================================
-    const firebaseConfig = {
-        apiKey: "AIzaSyCw3ttPKMx-jAd1IL-5IZRdA4KVAMYdSgA",
-        authDomain: "projctick.firebaseapp.com",
-        projectId: "projctick",
-        storageBucket: "projctick.firebasestorage.app",
-        messagingSenderId: "639615889635",
-        appId: "1:639615889635:web:f591a1ebf29ae95e75d5d6",
-        measurementId: "G-XL8TQLV7BB"
-    };
+        if (user) {
+            document.getElementById('authCard').style.display = 'none';
+            document.getElementById('navBar').style.display = 'flex';
+            document.getElementById('feedSection').style.display = 'flex';
+            
+            document.getElementById('navUserProfile').innerHTML = `<span>👤 ${user.email}</span>`;
+            document.getElementById('userName').value = user.user_metadata.full_name || user.email;
+            document.getElementById('userEmail').value = user.email;
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-    const storage = getStorage(app); 
-    window.db = db;
+            fetchStatuses();
+            loadFeed(); // Твоя функция для ленты Firebase
+            loadDMs(user.email); // Твоя функция для сообщений Firebase
+        } else {
+            document.getElementById('authCard').style.display = 'block';
+            document.getElementById('navBar').style.display = 'none';
+            document.getElementById('feedSection').style.display = 'none';
+        }
+    });
 
-    let dmUnsubscribe = null;
-    let feedUnsubscribe = null; 
-
-    const feedSection = document.getElementById('feedSection');
-    const dmSection = document.getElementById('dmSection');
-
-    document.getElementById('goToDmBtn').onclick = () => {
-        feedSection.style.display = 'none';
-        dmSection.style.display = 'flex';
-    };
-
-    document.getElementById('backToFeedBtn').onclick = () => {
-        dmSection.style.display = 'none';
-        feedSection.style.display = 'flex';
-    };
-
-    // --- СТРОКА ЗАМЕНЫ НИЖЕ ---
     document.getElementById('loginBtn').onclick = () => supabase.auth.signInWithOAuth({ provider: 'google' });
-    // --- КОНЕЦ ЗАМЕНЫ ---
-
+    document.getElementById('logoutBtn').onclick = () => supabase.auth.signOut();
     document.getElementById('logoutBtn').onclick = () => signOut(auth);
 
     onAuthStateChanged(auth, (user) => {
