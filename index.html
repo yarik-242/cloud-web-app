@@ -26,68 +26,44 @@
         .btn-success { background: var(--accent); }
         .btn-success:hover { background: #059669; }
         .btn-danger { background: var(--danger); }
-        .btn-danger:hover { background: #dc2626; }
-        .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
-        .btn-outline:hover { background: var(--primary); color: white; }
 
-        /* НАВИГАЦИЯ */
         .nav-bar { display: none; justify-content: space-between; align-items: center; width: 100%; max-width: 400px; background: white; padding: 10px 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; box-sizing: border-box; }
         .nav-user { display: flex; align-items: center; gap: 10px; font-weight: bold; color: #1e293b;}
-        .nav-user img { width: 35px; height: 35px; border-radius: 50%; }
-        
         .nav-buttons { display: flex; gap: 5px; }
         .msg-btn { position: relative; background: var(--accent); color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
         .msg-badge { position: absolute; top: -5px; right: -5px; background: var(--danger); color: white; font-size: 0.75rem; padding: 2px 6px; border-radius: 10px; display: none; }
         .logout-icon-btn { background: var(--danger); color: white; border: none; padding: 8px 10px; border-radius: 8px; cursor: pointer; font-weight: bold; }
 
-        .stats-panel { background: #1e293b; color: white; padding: 15px; border-radius: 12px; width: 100%; max-width: 400px; display: flex; justify-content: space-around; margin-bottom: 15px; box-sizing: border-box;}
-        .stat-item span { display: block; font-size: 1.5rem; font-weight: bold; color: #3b82f6; text-align: center; }
-        
-        .filter-btn { background: #e2e8f0; color: #475569; padding: 10px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 20px; width: 100%; max-width: 400px; }
-        .filter-btn.active { background: #f59e0b; color: white; }
-
-        #feed, #dmFeed { width: 100%; max-width: 400px; text-align: left; }
-        .user-post, .dm-message { background: white; padding: 15px 20px; margin-bottom: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-left: 5px solid var(--primary); box-sizing: border-box; }
-        .dm-message { border-left-color: var(--accent); background: #f0fdf4; }
-        .user-post img.post-image { width: 100%; max-height: 300px; object-fit: cover; border-radius: 8px; margin: 10px 0; }
-        .user-info strong { display: block; color: #1e293b; }
-        .user-info span { color: #64748b; font-size: 0.85rem; }
-        .like-container { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
-        .heart-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #3b82f6; padding: 0; }
-        
-        /* Секции */
-        #feedSection, #dmSection { display: none; width: 100%; flex-direction: column; align-items: center; }
-
-        /* Статусы */
         .status-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
         .status-btn { border: none; padding: 10px; border-radius: 5px; color: white; cursor: pointer; font-weight: bold; }
         .supa-user-item { display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #eee; text-align: left;}
         .supa-dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; flex-shrink: 0;}
+
+        #feedSection, #dmSection { display: none; width: 100%; flex-direction: column; align-items: center; }
+        #feed { width: 100%; max-width: 400px; }
+        .user-post { background: white; padding: 15px; margin-bottom: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-left: 5px solid var(--primary); }
+        .user-post img { width: 100%; border-radius: 8px; margin-top: 10px; }
     </style>
 </head>
 <body>
 
 <div class="card" id="authCard">
     <h2>Требуется вход 🔒</h2>
-    <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 15px;">Только авторизованные пользователи могут делать публикации.</p>
+    <p>Войдите, чтобы использовать Cloud App</p>
     <button class="btn btn-primary" id="loginBtn">Вход через Google</button>
 </div>
 
 <div class="nav-bar" id="navBar">
     <div class="nav-user" id="navUserProfile"></div>
     <div class="nav-buttons">
-        <button class="msg-btn" id="goToDmBtn">
-            ✉️ Сообщения
-            <span class="msg-badge" id="msgBadge">0</span>
-        </button>
-        <button class="logout-icon-btn" id="logoutBtn" title="Выйти">🚪</button>
+        <button class="msg-btn" id="goToDmBtn">✉️ <span class="msg-badge" id="msgBadge">0</span></button>
+        <button class="logout-icon-btn" id="logoutBtn">🚪</button>
     </div>
 </div>
 
 <div id="feedSection">
-    <div class="card" style="background: #e0f2fe; border: 1px solid #bae6fd;">
-        <h2>Мой статус 🏠</h2>
-        <div id="my-supabase-name" style="font-weight: bold; color: #0369a1; margin-bottom: 10px;">Загрузка...</div>
+    <div class="card" style="background: #e0f2fe;">
+        <div id="my-supabase-name" style="font-weight: bold; margin-bottom: 10px;">Загрузка профиля...</div>
         <div class="status-buttons">
             <button class="status-btn" style="background: #2ecc71" onclick="updateStatus('📚 Учусь', '#2ecc71')">📚 Учусь</button>
             <button class="status-btn" style="background: #f1c40f; color: black" onclick="updateStatus('☕ Кофе', '#f1c40f')">☕ Кофе</button>
@@ -97,47 +73,33 @@
     </div>
 
     <div class="card">
-        <h3>Кто онлайн 🌐</h3>
-        <div id="group-list" style="max-height: 200px; overflow-y: auto;"></div>
+        <h3>Онлайн монитор</h3>
+        <div id="group-list"></div>
     </div>
 
     <div class="card">
         <h3>Новый пост ✨</h3>
-        <input type="text" id="userName" readonly style="background: #f1f5f9; display: none;">
-        <input type="email" id="userEmail" readonly style="background: #f1f5f9; display: none;">
-        
+        <input type="text" id="userName" hidden>
+        <input type="email" id="userEmail" hidden>
         <div class="file-input-container">
-            <label style="font-size: 0.85rem; font-weight: bold; display: block; margin-bottom: 8px;">Прикрепить фото:</label>
             <input type="file" id="imageInput" accept="image/*">
         </div>
-        <img id="imagePreview" alt="Предпросмотр">
-        
+        <img id="imagePreview" alt="Preview">
         <button class="btn btn-primary" id="sendBtn">Опубликовать</button>
     </div>
 
-    <div class="stats-panel">
-        <div class="stat-item">Постов: <span id="totalPosts">0</span></div>
-        <div class="stat-item">Лайков: <span id="totalLikes">0</span></div>
-    </div>
-
-    <button class="filter-btn" id="filterBtn">🔥 Популярные (> 2 лайков)</button>
     <div id="feed"></div>
 </div>
 
 <div id="dmSection">
-    <button class="btn btn-outline" id="backToFeedBtn" style="max-width: 400px; margin-bottom: 20px;">⬅ Назад в ленту</button>
-
+    <button class="btn btn-primary" id="backToFeedBtn" style="max-width:400px">⬅ Назад</button>
     <div class="card">
-        <h2>Написать ✉️</h2>
-        <input type="email" id="dmReceiver" placeholder="Email получателя" required>
-        <textarea id="dmText" placeholder="Напишите сообщение..." rows="3" required></textarea>
+        <h3>Личное сообщение ✉️</h3>
+        <input type="email" id="dmReceiver" placeholder="Email получателя">
+        <textarea id="dmText" placeholder="Привет..."></textarea>
         <button class="btn btn-success" id="sendDmBtn">Отправить</button>
     </div>
-
-    <div style="width: 100%; max-width: 400px;">
-        <h3>Входящие:</h3>
-        <div id="dmFeed"></div>
-    </div>
+    <div id="dmFeed" style="width:100%; max-width:400px"></div>
 </div>
 
 <script type="module">
@@ -147,7 +109,7 @@
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
     import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-    // 1. КОНФИГУРАЦИЯ
+    // 1. КОНФИГ (Твои ключи)
     const SUPABASE_URL = 'https://mvyybofgbevtdrjxakgz.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_wOpOx1LKaZ5BeM3vhkeMUA_4ld7jrkP'; 
     const firebaseConfig = {
@@ -163,38 +125,32 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const storage = getStorage(app);
-    const auth = getAuth(app); // Исправлено: инициализация auth
+    const auth = getAuth(app); // КРИТИЧЕСКИ ВАЖНАЯ СТРОЧКА
 
     let currentUser = null;
-    let feedUnsubscribe = null;
-    let dmUnsubscribe = null;
-    let isFiltered = false;
+    let feedUnsub = null;
+    let dmUnsub = null;
 
-    // 2. АВТОРИЗАЦИЯ
+    // 2. ВХОД / ВЫХОД
     supabase.auth.onAuthStateChange((event, session) => {
         currentUser = session?.user;
-
         if (currentUser) {
             document.getElementById('authCard').style.display = 'none';
             document.getElementById('navBar').style.display = 'flex';
             document.getElementById('feedSection').style.display = 'flex';
-            document.getElementById('dmSection').style.display = 'none';
             
-            const name = currentUser.user_metadata.full_name || currentUser.email;
-            document.getElementById('navUserProfile').innerHTML = `<span>👤 ${name.split(' ')[0]}</span>`;
-            document.getElementById('userName').value = name;
+            document.getElementById('navUserProfile').innerText = `👤 ${currentUser.email.split('@')[0]}`;
+            document.getElementById('userName').value = currentUser.user_metadata.full_name || currentUser.email;
             document.getElementById('userEmail').value = currentUser.email;
 
-            fetchStatuses();
             loadFeed();
             loadDMs(currentUser.email);
+            fetchStatuses();
         } else {
             document.getElementById('authCard').style.display = 'block';
             document.getElementById('navBar').style.display = 'none';
             document.getElementById('feedSection').style.display = 'none';
             document.getElementById('dmSection').style.display = 'none';
-            if (feedUnsubscribe) feedUnsubscribe();
-            if (dmUnsubscribe) dmUnsubscribe();
         }
     });
 
@@ -209,96 +165,63 @@
     };
 
     async function fetchStatuses() {
-        const { data, error } = await supabase.from('profiles').select('*').order('username');
-        if (error) return;
-        
-        const list = document.getElementById('group-list');
-        list.innerHTML = data.map(user => `
+        const { data } = await supabase.from('profiles').select('*').order('username');
+        if (!data) return;
+        document.getElementById('group-list').innerHTML = data.map(u => `
             <div class="supa-user-item">
-                <div class="supa-dot" style="background: ${user.color || '#ccc'}"></div>
-                <div><strong>${user.username || user.email}</strong>: ${user.status || '...'}</div>
+                <div class="supa-dot" style="background:${u.color || '#ccc'}"></div>
+                <div><b>${u.username || u.email}</b>: ${u.status || '...'}</div>
             </div>
         `).join('');
-
-        const me = data.find(u => u.id === currentUser?.id);
+        const me = data.find(u => u.id === currentUser.id);
         if (me) document.getElementById('my-supabase-name').innerText = `Твой статус: ${me.status || 'Не задан'}`;
     }
 
-    // 4. ЛЕНТА (Firebase)
+    // 4. ФУНКЦИИ ЛЕНТЫ (Firebase)
     function loadFeed() {
-        if (feedUnsubscribe) feedUnsubscribe();
-        let q = isFiltered 
-            ? query(collection(db, "requests"), where("likes", ">", 2), orderBy("likes", "desc"))
-            : query(collection(db, "requests"), orderBy("timestamp", "desc"));
-
-        feedUnsubscribe = onSnapshot(q, (snapshot) => {
+        if (feedUnsub) feedUnsub();
+        const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
+        feedUnsub = onSnapshot(q, (snaps) => {
             const feed = document.getElementById('feed');
             feed.innerHTML = "";
-            let totalLikes = 0;
-
-            snapshot.forEach((sDoc) => {
-                const data = sDoc.data();
-                const id = sDoc.id;
-                totalLikes += (data.likes || 0);
-
-                const post = document.createElement('div');
-                post.className = 'user-post';
-                post.innerHTML = `
-                    <div class="user-info"><strong>${data.name}</strong><span>${data.email}</span></div>
-                    ${data.imageUrl ? `<img src="${data.imageUrl}" class="post-image">` : ''}
-                    <div class="like-container">
-                        <button class="heart-btn" onclick="window.likePost('${id}')">♥</button>
-                        <span>${data.likes || 0}</span>
-                    </div>`;
-                feed.appendChild(post);
+            snaps.forEach(docSnap => {
+                const post = docSnap.data();
+                const div = document.createElement('div');
+                div.className = 'user-post';
+                div.innerHTML = `
+                    <b>${post.name}</b><br><small>${post.email}</small>
+                    ${post.imageUrl ? `<img src="${post.imageUrl}">` : ''}
+                    <div style="margin-top:10px">❤️ ${post.likes || 0}</div>
+                `;
+                feed.appendChild(div);
             });
-            document.getElementById('totalPosts').innerText = snapshot.size;
-            document.getElementById('totalLikes').innerText = totalLikes;
         });
     }
-
-    window.likePost = async (id) => {
-        await updateDoc(doc(db, "requests", id), { likes: increment(1) });
-    };
 
     // 5. СООБЩЕНИЯ (Firebase)
-    function loadDMs(myEmail) {
-        if (dmUnsubscribe) dmUnsubscribe();
-        const q = query(collection(db, "messages"), where("receiverEmail", "==", myEmail));
-        dmUnsubscribe = onSnapshot(q, (snapshot) => {
-            const feed = document.getElementById('dmFeed');
+    function loadDMs(email) {
+        if (dmUnsub) dmUnsub();
+        const q = query(collection(db, "messages"), where("receiverEmail", "==", email));
+        dmUnsub = onSnapshot(q, (snaps) => {
             const badge = document.getElementById('msgBadge');
-            badge.innerText = snapshot.size;
-            badge.style.display = snapshot.size > 0 ? 'inline-block' : 'none';
-            feed.innerHTML = snapshot.empty ? "<p>Нет сообщений</p>" : "";
+            badge.innerText = snaps.size;
+            badge.style.display = snaps.size > 0 ? 'inline' : 'none';
             
-            snapshot.docs.forEach(doc => {
-                const m = doc.data();
-                feed.innerHTML += `<div class="dm-message"><b>${m.senderEmail}</b><br>${m.text}</div>`;
+            const dmFeed = document.getElementById('dmFeed');
+            dmFeed.innerHTML = snaps.empty ? "Нет сообщений" : "";
+            snaps.forEach(d => {
+                const m = d.data();
+                dmFeed.innerHTML += `<div class="card" style="text-align:left"><b>От: ${m.senderEmail}</b><p>${m.text}</p></div>`;
             });
         });
     }
 
-    document.getElementById('sendDmBtn').onclick = async () => {
-        const email = document.getElementById('dmReceiver').value;
-        const text = document.getElementById('dmText').value;
-        if (!email || !text) return alert("Заполни поля!");
-        await addDoc(collection(db, "messages"), {
-            senderEmail: currentUser.email,
-            receiverEmail: email,
-            text: text,
-            timestamp: serverTimestamp()
-        });
-        document.getElementById('dmText').value = "";
-        alert("Отправлено!");
-    };
-
-    // Загрузка фото
-    let selectedFile = null;
+    // Загрузка фото и отправка
+    let file = null;
     document.getElementById('imageInput').onchange = (e) => {
-        selectedFile = e.target.files[0];
-        if (selectedFile) {
-            document.getElementById('imagePreview').src = URL.createObjectURL(selectedFile);
+        file = e.target.files[0];
+        if (file) {
+            document.getElementById('imagePreview').src = URL.createObjectURL(file);
             document.getElementById('imagePreview').style.display = 'block';
         }
     };
@@ -308,9 +231,9 @@
         btn.disabled = true;
         try {
             let url = null;
-            if (selectedFile) {
-                const sRef = ref(storage, 'images/' + Date.now() + '_' + selectedFile.name);
-                await uploadBytes(sRef, selectedFile);
+            if (file) {
+                const sRef = ref(storage, `posts/${Date.now()}_${file.name}`);
+                await uploadBytes(sRef, file);
                 url = await getDownloadURL(sRef);
             }
             await addDoc(collection(db, "requests"), {
@@ -320,13 +243,13 @@
                 likes: 0,
                 timestamp: serverTimestamp()
             });
+            file = null;
             document.getElementById('imagePreview').style.display = 'none';
-            selectedFile = null;
         } catch (e) { alert(e.message); }
         btn.disabled = false;
     };
 
-    // Навигация
+    // Переходы
     document.getElementById('goToDmBtn').onclick = () => {
         document.getElementById('feedSection').style.display = 'none';
         document.getElementById('dmSection').style.display = 'flex';
@@ -334,12 +257,6 @@
     document.getElementById('backToFeedBtn').onclick = () => {
         document.getElementById('dmSection').style.display = 'none';
         document.getElementById('feedSection').style.display = 'flex';
-    };
-    document.getElementById('filterBtn').onclick = () => {
-        isFiltered = !isFiltered;
-        document.getElementById('filterBtn').classList.toggle('active');
-        document.getElementById('filterBtn').innerText = isFiltered ? "🔙 Все посты" : "🔥 Популярные (> 2 лайков)";
-        loadFeed();
     };
 </script>
 
