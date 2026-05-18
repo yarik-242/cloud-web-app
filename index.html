@@ -31,7 +31,7 @@
         .btn-outline:hover { background: var(--primary); color: white; }
 
         /* НАВИГАЦИЯ */
-        .nav-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 400px; background: white; padding: 10px 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; box-sizing: border-box; }
+        .nav-bar { display: none; justify-content: space-between; align-items: center; width: 100%; max-width: 400px; background: white; padding: 10px 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; box-sizing: border-box; }
         .nav-user { display: flex; align-items: center; gap: 10px; font-weight: bold; color: #1e293b;}
         .nav-user img { width: 35px; height: 35px; border-radius: 50%; }
         
@@ -55,11 +55,10 @@
         .like-container { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
         .heart-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #3b82f6; padding: 0; }
         
-        /* Секции (вкладки) */
-        #feedSection { display: none; width: 100%; flex-direction: column; align-items: center; }
-        #dmSection { display: none; width: 100%; flex-direction: column; align-items: center; }
+        /* Секции */
+        #feedSection, #dmSection { display: none; width: 100%; flex-direction: column; align-items: center; }
 
-        /* SUPABASE СТИЛИ СТАТУСА */
+        /* Статусы */
         .status-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
         .status-btn { border: none; padding: 10px; border-radius: 5px; color: white; cursor: pointer; font-weight: bold; }
         .supa-user-item { display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #eee; text-align: left;}
@@ -70,11 +69,11 @@
 
 <div class="card" id="authCard">
     <h2>Требуется вход 🔒</h2>
-    <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 15px;">Только авторизованные пользователи могут делать публикации и писать сообщения.</p>
+    <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 15px;">Только авторизованные пользователи могут делать публикации.</p>
     <button class="btn btn-primary" id="loginBtn">Вход через Google</button>
 </div>
 
-<div class="nav-bar" id="navBar" style="display: none;">
+<div class="nav-bar" id="navBar">
     <div class="nav-user" id="navUserProfile"></div>
     <div class="nav-buttons">
         <button class="msg-btn" id="goToDmBtn">
@@ -86,24 +85,24 @@
 </div>
 
 <div id="feedSection">
-    
     <div class="card" style="background: #e0f2fe; border: 1px solid #bae6fd;">
-        <h2>Мой статус в группе</h2>
+        <h2>Мой статус 🏠</h2>
         <div id="my-supabase-name" style="font-weight: bold; color: #0369a1; margin-bottom: 10px;">Загрузка...</div>
         <div class="status-buttons">
-            <button class="status-btn" style="background: #2ecc71" onclick="window.updateStatus('📚 Учусь', '#2ecc71')">📚 Учусь</button>
-            <button class="status-btn" style="background: #f1c40f; color: black" onclick="window.updateStatus('☕ Кофе', '#f1c40f')">☕ Кофе</button>
-            <button class="status-btn" style="background: #3498db" onclick="window.updateStatus('🎮 В игре', '#3498db')">🎮 В игре</button>
-            <button class="status-btn" style="background: #95a5a6" onclick="window.updateStatus('🏠 На связи', '#95a5a6')">🏠 На связи</button>
+            <button class="status-btn" style="background: #2ecc71" onclick="updateStatus('📚 Учусь', '#2ecc71')">📚 Учусь</button>
+            <button class="status-btn" style="background: #f1c40f; color: black" onclick="updateStatus('☕ Кофе', '#f1c40f')">☕ Кофе</button>
+            <button class="status-btn" style="background: #3498db" onclick="updateStatus('🎮 В игре', '#3498db')">🎮 В игре</button>
+            <button class="status-btn" style="background: #95a5a6" onclick="updateStatus('🏠 На связи', '#95a5a6')">🏠 На связи</button>
         </div>
     </div>
 
     <div class="card">
-        <h3>Онлайн монитор (Supabase)</h3>
+        <h3>Кто онлайн 🌐</h3>
         <div id="group-list" style="max-height: 200px; overflow-y: auto;"></div>
     </div>
+
     <div class="card">
-        <h3>Новая публикация (Firebase)</h3>
+        <h3>Новый пост ✨</h3>
         <input type="text" id="userName" readonly style="background: #f1f5f9; display: none;">
         <input type="email" id="userEmail" readonly style="background: #f1f5f9; display: none;">
         
@@ -113,7 +112,7 @@
         </div>
         <img id="imagePreview" alt="Предпросмотр">
         
-        <button class="btn btn-primary" id="sendBtn">Опубликовать в ленту</button>
+        <button class="btn btn-primary" id="sendBtn">Опубликовать</button>
     </div>
 
     <div class="stats-panel">
@@ -129,7 +128,7 @@
     <button class="btn btn-outline" id="backToFeedBtn" style="max-width: 400px; margin-bottom: 20px;">⬅ Назад в ленту</button>
 
     <div class="card">
-        <h2>Написать сообщение ✉️</h2>
+        <h2>Написать ✉️</h2>
         <input type="email" id="dmReceiver" placeholder="Email получателя" required>
         <textarea id="dmText" placeholder="Напишите сообщение..." rows="3" required></textarea>
         <button class="btn btn-success" id="sendDmBtn">Отправить</button>
@@ -142,13 +141,13 @@
 </div>
 
 <script type="module">
-    // ИМПОРТЫ
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, increment, serverTimestamp, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+    import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-    // 1. НАСТРОЙКИ (Твои данные)
+    // 1. КОНФИГУРАЦИЯ
     const SUPABASE_URL = 'https://mvyybofgbevtdrjxakgz.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_wOpOx1LKaZ5BeM3vhkeMUA_4ld7jrkP'; 
     const firebaseConfig = {
@@ -164,24 +163,54 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const storage = getStorage(app);
+    const auth = getAuth(app); // Исправлено: инициализация auth
 
     let currentUser = null;
+    let feedUnsubscribe = null;
+    let dmUnsubscribe = null;
+    let isFiltered = false;
 
-    // 2. ЛОГИКА СТАТУСОВ (Supabase)
+    // 2. АВТОРИЗАЦИЯ
+    supabase.auth.onAuthStateChange((event, session) => {
+        currentUser = session?.user;
+
+        if (currentUser) {
+            document.getElementById('authCard').style.display = 'none';
+            document.getElementById('navBar').style.display = 'flex';
+            document.getElementById('feedSection').style.display = 'flex';
+            document.getElementById('dmSection').style.display = 'none';
+            
+            const name = currentUser.user_metadata.full_name || currentUser.email;
+            document.getElementById('navUserProfile').innerHTML = `<span>👤 ${name.split(' ')[0]}</span>`;
+            document.getElementById('userName').value = name;
+            document.getElementById('userEmail').value = currentUser.email;
+
+            fetchStatuses();
+            loadFeed();
+            loadDMs(currentUser.email);
+        } else {
+            document.getElementById('authCard').style.display = 'block';
+            document.getElementById('navBar').style.display = 'none';
+            document.getElementById('feedSection').style.display = 'none';
+            document.getElementById('dmSection').style.display = 'none';
+            if (feedUnsubscribe) feedUnsubscribe();
+            if (dmUnsubscribe) dmUnsubscribe();
+        }
+    });
+
+    document.getElementById('loginBtn').onclick = () => supabase.auth.signInWithOAuth({ provider: 'google' });
+    document.getElementById('logoutBtn').onclick = () => supabase.auth.signOut();
+
+    // 3. СТАТУСЫ (Supabase)
     window.updateStatus = async (text, color) => {
-        if (!currentUser) return alert("Войдите в систему!");
-        const { error } = await supabase
-            .from('profiles')
-            .update({ status: text, color: color })
-            .eq('id', currentUser.id); // Используем ID вошедшего юзера
-        
-        if (error) console.error(error);
-        else fetchStatuses();
+        if (!currentUser) return;
+        await supabase.from('profiles').update({ status: text, color: color }).eq('id', currentUser.id);
+        fetchStatuses();
     };
 
     async function fetchStatuses() {
         const { data, error } = await supabase.from('profiles').select('*').order('username');
-        if (error) return console.error(error);
+        if (error) return;
         
         const list = document.getElementById('group-list');
         list.innerHTML = data.map(user => `
@@ -195,231 +224,121 @@
         if (me) document.getElementById('my-supabase-name').innerText = `Твой статус: ${me.status || 'Не задан'}`;
     }
 
-    // 3. АВТОРИЗАЦИЯ (Supabase Auth Listener)
-    // Мы слушаем Supabase, так как кнопка входа работает через него
-    supabase.auth.onAuthStateChange((event, session) => {
-        const user = session?.user;
-        currentUser = user;
+    // 4. ЛЕНТА (Firebase)
+    function loadFeed() {
+        if (feedUnsubscribe) feedUnsubscribe();
+        let q = isFiltered 
+            ? query(collection(db, "requests"), where("likes", ">", 2), orderBy("likes", "desc"))
+            : query(collection(db, "requests"), orderBy("timestamp", "desc"));
 
-        if (user) {
-            document.getElementById('authCard').style.display = 'none';
-            document.getElementById('navBar').style.display = 'flex';
-            document.getElementById('feedSection').style.display = 'flex';
-            
-            document.getElementById('navUserProfile').innerHTML = `<span>👤 ${user.email}</span>`;
-            document.getElementById('userName').value = user.user_metadata.full_name || user.email;
-            document.getElementById('userEmail').value = user.email;
+        feedUnsubscribe = onSnapshot(q, (snapshot) => {
+            const feed = document.getElementById('feed');
+            feed.innerHTML = "";
+            let totalLikes = 0;
 
-            fetchStatuses();
-            loadFeed(); // Твоя функция для ленты Firebase
-            loadDMs(user.email); // Твоя функция для сообщений Firebase
-        } else {
-            document.getElementById('authCard').style.display = 'block';
-            document.getElementById('navBar').style.display = 'none';
-            document.getElementById('feedSection').style.display = 'none';
-        }
-    });
+            snapshot.forEach((sDoc) => {
+                const data = sDoc.data();
+                const id = sDoc.id;
+                totalLikes += (data.likes || 0);
 
-    document.getElementById('loginBtn').onclick = () => supabase.auth.signInWithOAuth({ provider: 'google' });
-    document.getElementById('logoutBtn').onclick = () => supabase.auth.signOut();
-    document.getElementById('logoutBtn').onclick = () => signOut(auth);
+                const post = document.createElement('div');
+                post.className = 'user-post';
+                post.innerHTML = `
+                    <div class="user-info"><strong>${data.name}</strong><span>${data.email}</span></div>
+                    ${data.imageUrl ? `<img src="${data.imageUrl}" class="post-image">` : ''}
+                    <div class="like-container">
+                        <button class="heart-btn" onclick="window.likePost('${id}')">♥</button>
+                        <span>${data.likes || 0}</span>
+                    </div>`;
+                feed.appendChild(post);
+            });
+            document.getElementById('totalPosts').innerText = snapshot.size;
+            document.getElementById('totalLikes').innerText = totalLikes;
+        });
+    }
 
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
-            document.getElementById('authCard').style.display = 'none';
-            document.getElementById('navBar').style.display = 'flex';
-            feedSection.style.display = 'flex'; 
-            dmSection.style.display = 'none';
+    window.likePost = async (id) => {
+        await updateDoc(doc(db, "requests", id), { likes: increment(1) });
+    };
 
-            document.getElementById('navUserProfile').innerHTML = `<img src="${user.photoURL}"> <span>${user.displayName.split(' ')[0]}</span>`;
-            document.getElementById('userName').value = user.displayName;
-            document.getElementById('userEmail').value = user.email;
-            
-            loadFeed(); 
-            loadDMs(user.email); 
-        } else {
-            document.getElementById('authCard').style.display = 'block';
-            document.getElementById('navBar').style.display = 'none';
-            feedSection.style.display = 'none';
-            dmSection.style.display = 'none';
-            if (dmUnsubscribe) dmUnsubscribe();
-            if (feedUnsubscribe) feedUnsubscribe();
-        }
-    });
-
+    // 5. СООБЩЕНИЯ (Firebase)
     function loadDMs(myEmail) {
         if (dmUnsubscribe) dmUnsubscribe();
         const q = query(collection(db, "messages"), where("receiverEmail", "==", myEmail));
-        
         dmUnsubscribe = onSnapshot(q, (snapshot) => {
             const feed = document.getElementById('dmFeed');
             const badge = document.getElementById('msgBadge');
+            badge.innerText = snapshot.size;
+            badge.style.display = snapshot.size > 0 ? 'inline-block' : 'none';
+            feed.innerHTML = snapshot.empty ? "<p>Нет сообщений</p>" : "";
             
-            feed.innerHTML = ""; 
-            
-            const msgCount = snapshot.size;
-            if (msgCount > 0) {
-                badge.innerText = msgCount;
-                badge.style.display = 'inline-block';
-            } else {
-                badge.style.display = 'none';
-            }
-
-            if (snapshot.empty) {
-                feed.innerHTML = "<p style='color: #64748b;'>У вас пока нет сообщений.</p>";
-                return;
-            }
-
-            const docs = snapshot.docs.map(doc => doc.data());
-            docs.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-
-            docs.forEach((data) => {
-                let timeString = "Только что";
-                if (data.timestamp) {
-                    const date = new Date(data.timestamp.seconds * 1000);
-                    timeString = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                }
-
-                const post = document.createElement('div');
-                post.className = 'dm-message';
-                post.innerHTML = `
-                    <div class="user-info" style="margin-bottom: 8px;">
-                        <span>От: <strong>${data.senderEmail}</strong></span>
-                        <span style="font-size: 0.75rem; float:right;">${timeString}</span>
-                    </div>
-                    <div style="color: #1e293b; font-size: 0.95rem;">${data.text}</div>
-                `;
-                feed.appendChild(post);
+            snapshot.docs.forEach(doc => {
+                const m = doc.data();
+                feed.innerHTML += `<div class="dm-message"><b>${m.senderEmail}</b><br>${m.text}</div>`;
             });
         });
     }
 
     document.getElementById('sendDmBtn').onclick = async () => {
-        const receiverEmail = document.getElementById('dmReceiver').value.trim();
-        const text = document.getElementById('dmText').value.trim();
-        const btn = document.getElementById('sendDmBtn');
-
-        if (!receiverEmail || !text) return alert("Заполните email получателя и текст!");
-
-        btn.disabled = true;
-        btn.innerText = 'Отправка...';
-
-        try {
-            await addDoc(collection(db, "messages"), {
-                senderEmail: auth.currentUser.email,
-                receiverEmail: receiverEmail,
-                text: text,
-                timestamp: serverTimestamp()
-            });
-            
-            document.getElementById('dmReceiver').value = '';
-            document.getElementById('dmText').value = '';
-            alert("Сообщение успешно отправлено!");
-        } catch (error) {
-            console.error("Ошибка DM:", error);
-            alert("Ошибка: " + error.message);
-        } finally {
-            btn.disabled = false;
-            btn.innerText = 'Отправить';
-        }
+        const email = document.getElementById('dmReceiver').value;
+        const text = document.getElementById('dmText').value;
+        if (!email || !text) return alert("Заполни поля!");
+        await addDoc(collection(db, "messages"), {
+            senderEmail: currentUser.email,
+            receiverEmail: email,
+            text: text,
+            timestamp: serverTimestamp()
+        });
+        document.getElementById('dmText').value = "";
+        alert("Отправлено!");
     };
 
-    let selectedImageFile = null;
-    document.getElementById('imageInput').addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            selectedImageFile = file;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                document.getElementById('imagePreview').src = e.target.result;
-                document.getElementById('imagePreview').style.display = 'block';
-            };
-            reader.readAsDataURL(file);
+    // Загрузка фото
+    let selectedFile = null;
+    document.getElementById('imageInput').onchange = (e) => {
+        selectedFile = e.target.files[0];
+        if (selectedFile) {
+            document.getElementById('imagePreview').src = URL.createObjectURL(selectedFile);
+            document.getElementById('imagePreview').style.display = 'block';
         }
-    });
+    };
 
     document.getElementById('sendBtn').onclick = async () => {
         const btn = document.getElementById('sendBtn');
         btn.disabled = true;
-        btn.innerText = 'Загрузка...';
-
         try {
-            let imageUrl = null;
-            if (selectedImageFile) {
-                const imageRef = ref(storage, 'images/' + Date.now() + '_' + selectedImageFile.name);
-                await uploadBytes(imageRef, selectedImageFile);
-                imageUrl = await getDownloadURL(imageRef);
+            let url = null;
+            if (selectedFile) {
+                const sRef = ref(storage, 'images/' + Date.now() + '_' + selectedFile.name);
+                await uploadBytes(sRef, selectedFile);
+                url = await getDownloadURL(sRef);
             }
             await addDoc(collection(db, "requests"), {
                 name: document.getElementById('userName').value,
-                email: document.getElementById('userEmail').value,
-                imageUrl: imageUrl, 
+                email: currentUser.email,
+                imageUrl: url,
                 likes: 0,
                 timestamp: serverTimestamp()
             });
-
-            document.getElementById('imageInput').value = '';
             document.getElementById('imagePreview').style.display = 'none';
-            selectedImageFile = null;
-        } catch (error) {
-            alert("Ошибка загрузки: " + error.message);
-        } finally {
-            btn.disabled = false;
-            btn.innerText = 'Опубликовать в ленту';
-        }
+            selectedFile = null;
+        } catch (e) { alert(e.message); }
+        btn.disabled = false;
     };
 
-    let isFiltered = false; 
-
-    function loadFeed() {
-        if (feedUnsubscribe) feedUnsubscribe(); 
-        let q = isFiltered 
-            ? query(collection(db, "requests"), where("likes", ">", 2), orderBy("likes", "desc"))
-            : query(collection(db, "requests"), orderBy("timestamp", "desc"));
-        
-        feedUnsubscribe = onSnapshot(q, (snapshot) => {
-            const feed = document.getElementById('feed');
-            feed.innerHTML = ""; 
-            let totalLikesCount = 0; 
-
-            snapshot.forEach((sDoc) => {
-                const data = sDoc.data();
-                const id = sDoc.id;
-                totalLikesCount += (data.likes || 0);
-
-                const imageHtml = data.imageUrl ? `<img src="${data.imageUrl}" class="post-image">` : '';
-
-                const post = document.createElement('div');
-                post.className = 'user-post';
-                post.innerHTML = `
-                    <div class="user-info">
-                        <strong>${data.name}</strong>
-                        <span>${data.email}</span>
-                    </div>
-                    ${imageHtml}
-                    <div class="like-container">
-                        <button class="heart-btn" id="btn-${id}">&#9829;</button>
-                        <span class="like-count">${data.likes || 0}</span>
-                    </div>
-                `;
-                feed.appendChild(post);
-
-                document.getElementById(`btn-${id}`).onclick = async (e) => {
-                    e.preventDefault();
-                    if (!auth.currentUser) return;
-                    await updateDoc(doc(db, "requests", id), { likes: increment(1) });
-                };
-            });
-            document.getElementById('totalPosts').innerText = snapshot.size;
-            document.getElementById('totalLikes').innerText = totalLikesCount;
-        });
-    }
-
-    const filterBtn = document.getElementById('filterBtn');
-    filterBtn.onclick = () => {
+    // Навигация
+    document.getElementById('goToDmBtn').onclick = () => {
+        document.getElementById('feedSection').style.display = 'none';
+        document.getElementById('dmSection').style.display = 'flex';
+    };
+    document.getElementById('backToFeedBtn').onclick = () => {
+        document.getElementById('dmSection').style.display = 'none';
+        document.getElementById('feedSection').style.display = 'flex';
+    };
+    document.getElementById('filterBtn').onclick = () => {
         isFiltered = !isFiltered;
-        filterBtn.classList.toggle('active');
-        filterBtn.innerText = isFiltered ? "🔙 Показать все посты" : "🔥 Популярные (> 2 лайков)";
+        document.getElementById('filterBtn').classList.toggle('active');
+        document.getElementById('filterBtn').innerText = isFiltered ? "🔙 Все посты" : "🔥 Популярные (> 2 лайков)";
         loadFeed();
     };
 </script>
