@@ -277,7 +277,7 @@
 
             await supabase.from('profiles').update(updateData).eq('id', currentUser.id);
             fetchStatuses();
-             } catch (e) { console.error(e); }
+        } catch (e) { console.error(e); }
     };
 
     // ОТРИСОВКА МОНИТОРА И ТОП-СТУДЕНТОВ
@@ -394,7 +394,6 @@
         } catch (e) { console.log(me.message); }
     }
 
-    
     // ЛЕНТА ПОСТОВ
     function loadFeed() {
         onSnapshot(query(collection(db, "requests"), orderBy("timestamp", "desc")), (snaps) => {
