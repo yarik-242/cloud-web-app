@@ -29,11 +29,11 @@
             min-height: 100vh;
         }
 
-        /* КАРТОЧКА АВТОРИЗАЦИИ */
-        .auth-card { background: var(--bg-card); text-align: center; padding: 40px; border-radius: 24px; max-width: 400px; width: 100%; border: 1px solid rgba(255,255,255,0.05); }
+        /* АВТОРИЗАЦИЯ */
+        .auth-card { background: var(--bg-card); text-align: center; padding: 40px; border-radius: 24px; max-width: 400px; width: 100%; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .auth-card h2 { margin-top: 0; font-size: 2rem; }
 
-        /* ВЕРХНЯЯ ПАНЕЛЬ И ВЫХОД */
+        /* ВЕРХНЯЯ ПАНЕЛЬ */
         .top-bar { display: none; width: 100%; max-width: 500px; justify-content: flex-end; margin-bottom: 15px; }
         .logout-btn { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.3s;}
         .logout-btn:hover { background: var(--danger); color: white; }
@@ -77,7 +77,7 @@
         .tab-content { display: none; width: 100%; max-width: 500px; animation: fadeIn 0.3s ease; }
         .tab-content.active { display: block; }
 
-        /* СОЗДАНИЕ ПОСТА И ЛЕНТА */
+        /* ПОСТЫ И ЛЕНТА */
         .post-create-card { background: var(--bg-card); padding: 20px; border-radius: 20px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.05); }
         textarea { width: 100%; padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: white; resize: vertical; min-height: 80px; box-sizing: border-box; outline: none; font-family: inherit; margin-bottom: 10px; }
         textarea:focus { border-color: var(--primary); }
@@ -86,25 +86,25 @@
         .btn-primary { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.2s; font-size: 1rem; }
         .btn-primary:hover { background: #4f46e5; box-shadow: 0 0 15px rgba(99, 102, 241, 0.4); }
 
-        .post-card { background: var(--bg-card); padding: 20px; border-radius: 20px; margin-bottom: 15px; border-left: 4px solid var(--primary); border-top: 1px solid rgba(255,255,255,0.05); border-right: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .post-card { background: var(--bg-card); padding: 20px; border-radius: 20px; margin-bottom: 15px; border-left: 4px solid var(--primary); border: 1px solid rgba(255,255,255,0.05); border-left-width: 5px; border-left-color: var(--primary); }
         .post-author { font-weight: 700; color: var(--text-main); font-size: 1.05rem; }
         .post-text { margin: 12px 0; line-height: 1.5; color: var(--text-dim); white-space: pre-wrap; word-wrap: break-word; }
-        .post-img { width: 100%; border-radius: 12px; margin-top: 10px; }
+        .post-img { width: 100%; border-radius: 12px; margin-top: 10px; display: block; max-height: 300px; object-fit: cover; }
         
         .like-btn { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: var(--danger); padding: 6px 14px; border-radius: 20px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; transition: 0.2s; margin-top: 10px; }
         .like-btn:hover { background: rgba(239, 68, 68, 0.2); transform: scale(1.05); }
 
         /* ДОСТИЖЕНИЯ */
         .achievements-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .ach-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 15px; border-radius: 16px; position: relative; display: flex; flex-direction: column; gap: 5px; transition: 0.3s; }
-        .ach-card.unlocked { background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.3); box-shadow: 0 0 15px rgba(16, 185, 129, 0.1); }
-        .ach-card.locked { opacity: 0.5; filter: grayscale(100%); }
-        .ach-card.locked::after { content: '🔒'; position: absolute; top: 10px; right: 10px; font-size: 1.2rem; }
+        .ach-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 15px; border-radius: 16px; position: relative; display: flex; flex-direction: column; gap: 5px; transition: 0.3s; min-height: 110px; box-sizing: border-box; }
+        .ach-card.unlocked { background: rgba(16, 185, 129, 0.08); border-color: rgba(16, 185, 129, 0.4); box-shadow: 0 0 15px rgba(16, 185, 129, 0.1); filter: none; opacity: 1; }
+        .ach-card.locked { opacity: 0.4; filter: grayscale(100%); }
+        .ach-card.locked::after { content: '🔒'; position: absolute; top: 10px; right: 10px; font-size: 1rem; }
         .ach-icon { font-size: 2rem; }
         .ach-title { font-weight: 700; color: var(--text-main); font-size: 0.95rem; }
         .ach-desc { font-size: 0.75rem; color: var(--text-dim); line-height: 1.3; }
 
-        /* РЕЙТИНГ / ПОЛЬЗОВАТЕЛИ */
+        /* РЕЙТИНГ */
         .rank-item { display: flex; align-items: center; justify-content: space-between; padding: 15px; background: rgba(255,255,255,0.02); margin-bottom: 10px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.05); }
         .rank-info { display: flex; align-items: center; gap: 12px; }
         .rank-num { font-weight: 800; color: var(--text-dim); font-size: 1.1rem; width: 25px; }
@@ -161,16 +161,16 @@
                 <input type="file" id="imageInput" accept="image/*">
                 <button class="btn-primary" id="sendBtn">Опубликовать</button>
             </div>
-            <div id="feed"></div> </div>
+            <div id="feed"></div>
+        </div>
 
         <div id="tabRating" class="tab-content">
-            <h3 style="color: var(--text-dim); font-size: 0.9rem; text-transform: uppercase; margin-bottom: 10px;">🏆 Топ студентов (по минутам)</h3>
-            <div id="top-students-list">Загрузка...</div>
+            <h3 style="color: var(--text-dim); font-size: 0.9rem; text-transform: uppercase; margin-bottom: 15px;">🏆 Топ студентов (по минутам)</h3>
+            <div id="top-students-list">Синхронизация списков...</div>
         </div>
 
         <div id="tabAchievements" class="tab-content">
-            <div class="achievements-grid" id="achievementsGrid">
-                </div>
+            <div class="achievements-grid" id="achievementsGrid"></div>
         </div>
 
     </div>
@@ -181,7 +181,6 @@
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-    // Настройки баз данных (Твои ключи)
     const SUPABASE_URL = 'https://mvyybofgbevtdrjxakgz.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_wOpOx1LKaZ5BeM3vhkeMUA_4ld7jrkP'; 
     const firebaseConfig = {
@@ -193,35 +192,15 @@
         appId: "1:639615889635:web:f591a1ebf29ae95e75d5d6"
     };
 
+    // Исправленная глобальная инициализация Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-    const db = getFirestore(initializeApp(firebaseConfig));
-    const storage = getStorage();
 
     let currentUser = null;
-    let myLiveMinutes = 0;
 
-    // --- ФУНКЦИИ ИНТЕРФЕЙСА ---
-
-    // 1. Переключение вкладок (Исправлено)
-    window.switchTab = function(tabId, btnElement) {
-        // Скрываем все контенты
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        // Убираем подсветку со всех кнопок
-        document.querySelectorAll('.tab-trigger').forEach(t => t.classList.remove('active'));
-        
-        // Показываем нужный контент и подсвечиваем нажатую кнопку
-        document.getElementById(tabId).classList.add('active');
-        btnElement.classList.add('active');
-    };
-
-    // Форматирование времени
-    function formatTime(totalMinutes) {
-        const h = Math.floor(totalMinutes / 60);
-        const m = totalMinutes % 60;
-        return `⏱️ ${h} ч. ${m} мин.`;
-    }
-
-    // Список всех доступных достижений с эмодзи
+    // Список всех ачивок
     const ALL_ACHIEVEMENTS = [
         { id: 'first_step', icon: '🌱', title: 'Первый шаг', desc: 'Нажми статус "Учусь" первый раз' },
         { id: 'early_bird', icon: '🌅', title: 'Ранняя пташка', desc: 'Зайди в приложение с 4 до 9 утра' },
@@ -231,8 +210,23 @@
         { id: 'coffee', icon: '☕', title: 'Кофеман', desc: 'Поставь статус "Кофе"' }
     ];
 
-    // --- ЛОГИКА АВТОРИЗАЦИИ И ЗАПУСКА ---
+    // Функция переключения вкладок
+    window.switchTab = function(tabId, btnElement) {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.tab-trigger').forEach(t => t.classList.remove('active'));
+        
+        const targetTab = document.getElementById(tabId);
+        if (targetTab) targetTab.classList.add('active');
+        if (btnElement) btnElement.classList.add('active');
+    };
 
+    function formatTime(totalMinutes) {
+        const h = Math.floor(totalMinutes / 60);
+        const m = totalMinutes % 60;
+        return `⏱️ ${h} ч. ${m} мин.`;
+    }
+
+    // Авторизация
     document.getElementById('loginBtn').onclick = () => supabase.auth.signInWithOAuth({ provider: 'google' });
     
     document.getElementById('logoutBtn').onclick = async () => {
@@ -248,162 +242,161 @@
             document.getElementById('topBar').style.display = 'flex';
             document.getElementById('mainApp').style.display = 'block';
             
-            // Ставим имя в профиль
             const nick = currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
             document.getElementById('myProfileName').innerText = nick;
             
             await initProfile();
-            loadFeed(); // Загружаем посты
-            
-            // Запускаем обновление данных профиля и рейтинга
+            loadFeed();
             fetchData();
-            setInterval(fetchData, 10000); // Каждые 10 секунд для точного таймера
+            setInterval(fetchData, 5000); 
         }
     });
 
-    // --- ЛОГИКА ПРОФИЛЯ, СТАТУСОВ И БД ---
-
     async function initProfile() {
-        const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
-        if (!profile) {
-            await supabase.from('profiles').insert({ id: currentUser.id, email: currentUser.email, points: 0, post_count: 0, badges: '' });
-        }
-        await supabase.from('profiles').update({ is_online: true }).eq('id', currentUser.id);
-        
-        // Ранняя пташка
-        const hour = new Date().getHours();
-        if (hour >= 4 && hour < 9) await giveBadge('early_bird');
+        try {
+            const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
+            if (!profile) {
+                await supabase.from('profiles').insert({ id: currentUser.id, email: currentUser.email, points: 0, post_count: 0, badges: '' });
+            }
+            await supabase.from('profiles').update({ is_online: true }).eq('id', currentUser.id);
+            
+            const hour = new Date().getHours();
+            if (hour >= 4 && hour < 9) await giveBadge('early_bird');
+        } catch(e) { console.error(e); }
     }
 
     async function giveBadge(badgeId) {
-        const { data } = await supabase.from('profiles').select('badges').eq('id', currentUser.id).single();
-        let myBadges = data?.badges || '';
-        if (!myBadges.includes(badgeId)) {
-            await supabase.from('profiles').update({ badges: myBadges + (myBadges ? ',' : '') + badgeId }).eq('id', currentUser.id);
-        }
+        try {
+            const { data } = await supabase.from('profiles').select('badges').eq('id', currentUser.id).single();
+            let myBadges = data?.badges || '';
+            if (!myBadges.includes(badgeId)) {
+                const updated = myBadges + (myBadges ? ',' : '') + badgeId;
+                await supabase.from('profiles').update({ badges: updated }).eq('id', currentUser.id);
+            }
+        } catch(e) { console.error(e); }
     }
 
-    // 2. Обновление статуса (Исправлено, моментально меняет кнопки)
     window.updateStatus = async function(status, color, btnElement) {
-        // Подсвечиваем нажатую кнопку
-        document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
-        if(btnElement) btnElement.classList.add('active');
+        try {
+            document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
+            if(btnElement) btnElement.classList.add('active');
 
-        // Моментально обновляем UI профиля
-        document.getElementById('myProfileStatus').innerText = status;
-        document.getElementById('myProfileStatus').style.color = color;
+            document.getElementById('myProfileStatus').innerText = status;
+            document.getElementById('myProfileStatus').style.color = color;
 
-        // Логика БД
-        const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
-        let updates = { status, color };
-        
-        // Если перестал учиться - начисляем минуты
-        if (profile.status === '📚 Учусь' && status !== '📚 Учусь') {
-            const diffMins = Math.floor((Date.now() - profile.study_start) / 60000);
-            if (diffMins > 0) {
-                updates.points = (profile.points || 0) + diffMins;
-                if (diffMins >= 120) await giveBadge('marathon');
-                if ((updates.points) >= 1000) await giveBadge('legend');
+            const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
+            let updates = { status, color };
+            
+            if (profile.status === '📚 Учусь' && status !== '📚 Учусь') {
+                const diffMins = Math.floor((Date.now() - profile.study_start) / 60000);
+                if (diffMins > 0) {
+                    updates.points = (profile.points || 0) + diffMins;
+                    if (diffMins >= 120) await giveBadge('marathon');
+                    if ((updates.points) >= 1000) await giveBadge('legend');
+                }
+                updates.study_start = null;
             }
-            updates.study_start = null;
-        }
 
-        // Если начал учиться
-        if (status === '📚 Учусь') {
-            updates.study_start = Date.now();
-            await giveBadge('first_step');
-        }
-        if (status === '☕ Кофе') await giveBadge('coffee');
+            if (status === '📚 Учусь') {
+                updates.study_start = Date.now();
+                await giveBadge('first_step');
+            }
+            if (status === '☕ Кофе') await giveBadge('coffee');
 
-        await supabase.from('profiles').update(updates).eq('id', currentUser.id);
-        fetchData();
+            await supabase.from('profiles').update(updates).eq('id', currentUser.id);
+            fetchData();
+        } catch(e) { console.error(u); }
     };
 
-    // 3. Загрузка рейтинга, ачивок и таймеров
+    // Загрузка Рейтинга и Ачивок без вылетов
     async function fetchData() {
-        const { data: users } = await supabase.from('profiles').select('*');
-        if (!users) return;
+        try {
+            const { data: users, error } = await supabase.from('profiles').select('*');
+            if (error || !users) return;
 
-        // Считаем актуальное время для каждого (кто сейчас учится)
-        const processedUsers = users.map(u => {
-            let liveMinutes = u.points || 0;
-            if (u.status === '📚 Учусь' && u.study_start) {
-                const diff = Math.floor((Date.now() - Number(u.study_start)) / 60000);
-                if (diff > 0) liveMinutes += diff;
-            }
-            return { ...u, liveMinutes };
-        });
-
-        // Обновляем мой профиль
-        const me = processedUsers.find(u => u.id === currentUser.id);
-        if (me) {
-            document.getElementById('myProfileTime').innerText = formatTime(me.liveMinutes);
-            document.getElementById('myProfileStatus').innerText = me.status || 'Статус не выбран';
-            document.getElementById('myProfileStatus').style.color = me.color || 'var(--text-dim)';
-            
-            // Выделяем активную кнопку
-            document.querySelectorAll('.status-btn').forEach(b => {
-                b.classList.remove('active');
-                if (b.innerText.includes(me.status)) b.classList.add('active');
+            const processedUsers = users.map(u => {
+                let liveMinutes = u.points || 0;
+                if (u.status === '📚 Учусь' && u.study_start) {
+                    const diff = Math.floor((Date.now() - Number(u.study_start)) / 60000);
+                    if (diff > 0) liveMinutes += diff;
+                }
+                return { ...u, liveMinutes };
             });
 
-            // Рендерим мои достижения
-            const myBadges = me.badges ? me.badges.split(',') : [];
-            document.getElementById('achievementsGrid').innerHTML = ALL_ACHIEVEMENTS.map(ach => `
-                <div class="ach-card ${myBadges.includes(ach.id) ? 'unlocked' : 'locked'}">
-                    <div class="ach-icon">${ach.icon}</div>
-                    <div class="ach-title">${ach.title}</div>
-                    <div class="ach-desc">${ach.desc}</div>
-                </div>
-            `).join('');
-        }
+            const me = processedUsers.find(u => u.id === currentUser.id);
+            if (me) {
+                document.getElementById('myProfileTime').innerText = formatTime(me.liveMinutes);
+                document.getElementById('myProfileStatus').innerText = me.status || 'Статус не выбран';
+                document.getElementById('myProfileStatus').style.color = me.color || 'var(--text-dim)';
+                
+                document.querySelectorAll('.status-btn').forEach(b => {
+                    if (b.innerText.includes(me.status)) b.classList.add('active');
+                });
 
-        // Рендерим ТОП студентов (сортировка по актуальному времени)
-        const sorted = [...processedUsers].sort((a,b) => b.liveMinutes - a.liveMinutes);
-        document.getElementById('top-students-list').innerHTML = sorted.map((u, i) => {
-            const isOnlineColor = u.is_online ? '#10b981' : '#475569';
-            return `
-            <div class="rank-item">
-                <div class="rank-info">
-                    <div class="rank-num">${i+1}</div>
-                    <div class="supa-dot" style="background:${isOnlineColor}"></div>
-                    <div>
-                        <div class="rank-name">${u.email.split('@')[0]}</div>
-                        <div style="font-size:0.75rem; color:var(--text-dim)">${u.status || 'Не в сети'}</div>
-                    </div>
-                </div>
-                <div class="rank-points">${u.liveMinutes} мин</div>
-            </div>
-        `}).join('');
-    }
-
-    // --- ЛЕНТА И ПОСТЫ ---
-
-    // 4. Загрузка постов
-    function loadFeed() {
-        const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
-        onSnapshot(q, (snaps) => {
-            const feed = document.getElementById('feed');
-            feed.innerHTML = "";
-            snaps.forEach(docSnap => {
-                const p = docSnap.data();
-                feed.innerHTML += `
-                    <div class="post-card">
-                        <div class="post-author">${p.name}</div>
-                        <div class="post-text">${p.text || ''}</div>
-                        ${p.imageUrl ? `<img src="${p.imageUrl}" class="post-img">` : ''}
-                        <div>
-                            <button class="like-btn" onclick="likePost('${docSnap.id}')">
-                                ❤️ <span style="color:var(--text-main)">${p.likes || 0}</span>
-                            </button>
+                // Рендер достижений
+                const myBadges = me.badges ? String(me.badges).split(',').filter(Boolean) : [];
+                document.getElementById('achievementsGrid').innerHTML = ALL_ACHIEVEMENTS.map(ach => {
+                    const isUnlocked = myBadges.includes(ach.id);
+                    return `
+                        <div class="ach-card ${isUnlocked ? 'unlocked' : 'locked'}">
+                            <div class="ach-icon">${ach.icon}</div>
+                            <div class="ach-title">${ach.title}</div>
+                            <div class="ach-desc">${ach.desc}</div>
                         </div>
+                    `;
+                }).join('');
+            }
+
+            // Рендер ТОП Студентов
+            const sorted = [...processedUsers].sort((a,b) => b.liveMinutes - a.liveMinutes);
+            document.getElementById('top-students-list').innerHTML = sorted.map((u, i) => {
+                const isOnlineColor = u.is_online ? '#10b981' : '#475569';
+                return `
+                    <div class="rank-item">
+                        <div class="rank-info">
+                            <div class="rank-num">${i+1}</div>
+                            <div class="supa-dot" style="background:${isOnlineColor}"></div>
+                            <div>
+                                <div class="rank-name">${u.email ? u.email.split('@')[0] : 'Студент'}</div>
+                                <div style="font-size:0.75rem; color:var(--text-dim)">${u.status || 'Отдыхает'}</div>
+                            </div>
+                        </div>
+                        <div class="rank-points">${u.liveMinutes} мин</div>
                     </div>
                 `;
-            });
-        });
+            }).join('');
+
+        } catch (e) { console.error("Ошибка обновления данных:", e); }
     }
 
-    // 5. Лайки (Исправлено, привязано к Firebase ID)
+    // Загрузка Постов и Лайков
+    function loadFeed() {
+        try {
+            const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
+            onSnapshot(q, (snaps) => {
+                const feed = document.getElementById('feed');
+                feed.innerHTML = "";
+                snaps.forEach(docSnap => {
+                    const p = docSnap.data();
+                    const postId = docSnap.id;
+                    feed.innerHTML += `
+                        <div class="post-card">
+                            <div class="post-author">${p.name || 'Пользователь'}</div>
+                            ${p.text ? `<div class="post-text">${p.text}</div>` : ''}
+                            ${p.imageUrl ? `<img src="${p.imageUrl}" class="post-img">` : ''}
+                            <div>
+                                <button class="like-btn" onclick="likePost('${postId}')">
+                                    ❤️ <span>${p.likes || 0}</span>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+        } catch(e) { console.error("Ошибка ленты:", e); }
+    }
+
+    // Функция лайка
     window.likePost = async function(postId) {
         try {
             const postRef = doc(db, "requests", postId);
@@ -411,12 +404,12 @@
         } catch(e) { console.error("Ошибка лайка:", e); }
     };
 
-    // Отправка поста
+    // Создание поста
     document.getElementById('sendBtn').onclick = async () => {
         const text = document.getElementById('postText').value.trim();
         const file = document.getElementById('imageInput').files[0];
         
-        if (!text && !file) return alert("Напиши текст или прикрепи фото!");
+        if (!text && !file) return alert("Напишите текст или прикрепите фото!");
         document.getElementById('sendBtn').innerText = "Публикация...";
 
         try {
@@ -432,7 +425,7 @@
                 text, imageUrl: url, timestamp: serverTimestamp(), likes: 0
             });
 
-            await giveBadge('speaker'); // Ачивка за пост
+            await giveBadge('speaker');
             
             document.getElementById('postText').value = "";
             document.getElementById('imageInput').value = "";
@@ -441,11 +434,9 @@
         document.getElementById('sendBtn').innerText = "Опубликовать";
     };
 
-    // При закрытии вкладки ставим оффлайн
     window.addEventListener('beforeunload', () => {
         if (currentUser) { navigator.sendBeacon(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${currentUser.id}`, JSON.stringify({ is_online: false })); }
     });
-
 </script>
 </body>
 </html>
