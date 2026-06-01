@@ -320,9 +320,81 @@ async function getTopStudents(limitCount = 5) {
 }
 
 /**
- * Функция 2: Обновление статуса и добавление очков пользователю (Обновление данных)
- * Изменяет текстовый статус пользователя и прибавляет бонусные очки к текущим.
+ * Функция 1: Выдача достижения с автоматическим начислением бонуса (Сложная транзакция)
+ * Работает с таблицами: user_achievements, achievements, profiles
  */
+async function grantAchievementWithBonus(userId, achievementId) {
+    try {
+        // Шаг 1: Проверяем, нет ли уже этой ачивки у юзера, чтобы не выдать дважды
+        const { data: existingAch } = await supabase
+            .from('user_achievements')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('achievement_id', achievementId)
+            .single();
+
+        if (existingAch) {
+            console.log("У пользователя уже есть это достижение.");
+            return false;
+        }
+
+        // Шаг 2: Узнаем редкость достижения, чтобы рассчитать бонус
+        const { data: achInfo, error: achError } = await supabase
+            .from('achievements')
+            .select('rarity')
+            .eq('id', achievementId)
+            .single();
+
+        if (achError) throw achError;
+
+        // Распределяем очки в зависимости от редкости
+        let bonusPoints = 10; // COMMON
+        if (achInfo.rarity === 'EPIC') bonusPoints = 50;
+        if (achInfo.rarity === 'LEGENDARY') bonusPoints = 100;
+
+        // Шаг 3: Добавляем запись в таблицу полученных достижений
+        await supabase.from('user_achievements').insert({
+            user_id: userId,
+            achievement_id: achievementId
+        });
+
+        // Шаг 4: Прибавляем бонусные очки к профилю пользователя
+        const { data: profile } = await supabase.from('profiles').select('points').eq('id', userId).single();
+        await supabase.from('profiles').update({ 
+            points: (profile.points || 0) + bonusPoints 
+        }).eq('id', userId);
+
+        console.log(`Успех! Достижение выдано, начислено ${bonusPoints} бонусных очков.`);
+        return true;
+    } catch (err) {
+        console.error("Ошибка при выдаче достижения:", err.message);
+        return false;
+    }
+}
+
+/**
+ * Функция 2: Очистка неактивных пользователей (Массовое обновление / Batch Update)
+ * Находит всех, кто числится онлайн, но ушел в статус "Отдыхаю", и принудительно ставит им оффлайн.
+ */
+async function cleanUpInactiveUsers() {
+    try {
+        const { data, error } = await supabase
+            .from('profiles')
+            .update({ is_online: false })
+            .eq('is_online', true)
+            // Допустим, мы хотим выкинуть из онлайна всех, кто поставил статус "Сплю" или не учится
+            .in('status', ['Сплю', 'Отошел', 'Отключен'])
+            .select('username'); // Возвращаем имена тех, кого обновили
+
+        if (error) throw error;
+
+        console.log(`Очистка завершена. Переведены в оффлайн: ${data.length} пользователей.`, data);
+        return data;
+    } catch (err) {
+        console.error("Ошибка массового обновления:", err.message);
+        return null;
+    }
+}
 async function updateUserStatusAndPoints(userId, newStatus, bonusPoints) {
     try {
         // Сначала получаем текущие очки пользователя
