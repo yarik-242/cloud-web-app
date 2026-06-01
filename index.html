@@ -47,6 +47,9 @@
         .user-post { background: white; padding: 15px; margin-bottom: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-left: 5px solid var(--primary); text-align: left; }
         .user-post img { width: 100%; border-radius: 8px; margin-top: 10px; }
         .post-text { margin: 10px 0 5px 0; font-size: 1rem; color: #334155; white-space: pre-wrap; word-break: break-word; }
+        
+        .like-btn { background: #f8fafc; border: 1px solid #e2e8f0; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-size: 0.9rem; margin-top: 10px; display: inline-block; transition: 0.2s; color: #475569;}
+        .like-btn:hover { background: #fee2e2; border-color: #fca5a5; color: #ef4444; }
     </style>
 </head>
 <body>
@@ -68,7 +71,8 @@
 <div id="feedSection">
     
     <div class="card" style="background: #e0f2fe;">
-        <div id="my-supabase-name" style="font-weight: bold; margin-bottom: 5px;">Синхронизация профиля...</div>
+        <div id="my-supabase-name" style="font-weight: bold; margin-bottom: 5px; font-size: 1.1rem;">Синхронизация профиля...</div>
+        <div id="my-time-display" style="font-size: 0.95rem; color: #475569; margin-bottom: 5px;">Время в приложении: 0 мин</div>
         <div id="my-badges-display" style="font-size: 1.2rem; margin-bottom: 15px;"></div>
         <div class="status-buttons">
             <button class="status-btn" style="background: #2ecc71" onclick="updateStatus('📚 Учусь', '#2ecc71')">📚 Учусь</button>
@@ -116,7 +120,7 @@
 <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, where, doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
     import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
@@ -138,6 +142,8 @@
 
     let currentUser = null;
     let timerInterval = null;
+    let activeTimeInterval = null;
+    let myTotalMinutes = 0;
 
     // НАВИГАЦИЯ
     document.getElementById('goToDmBtn').onclick = () => { document.getElementById('feedSection').style.display = 'none'; document.getElementById('dmSection').style.display = 'flex'; };
@@ -168,10 +174,18 @@
             document.getElementById('feedSection').style.display = 'none';
             document.getElementById('dmSection').style.display = 'none';
             if (timerInterval) clearInterval(timerInterval);
+            if (activeTimeInterval) clearInterval(activeTimeInterval);
         }
     });
 
-    // ЛОГИКА ПРОФИЛЯ И АЧИВОК
+    function formatTimeDisplay(mins) {
+        const hours = Math.floor(mins / 60);
+        const m = mins % 60;
+        if (hours > 0) return `Время в приложении: ${hours} ч. ${m} мин.`;
+        return `Время в приложении: ${mins} мин.`;
+    }
+
+    // ЛОГИКА ПРОФИЛЯ, АЧИВОК И СЧЕТЧИКА ВРЕМЕНИ
     async function manageSupabaseProfile(user) {
         try {
             const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
@@ -180,18 +194,29 @@
             
             let updates = { is_online: true };
             let currentBadges = profile?.badges || '';
+            myTotalMinutes = profile?.total_minutes || 0;
 
-            // Ачивка: Ранняя пташка (зашел с 4:00 до 8:59)
+            // Ачивка: Ранняя пташка
             if (hours >= 4 && hours < 9 && !currentBadges.includes('🌅')) {
                 updates.badges = currentBadges + '🌅';
                 alert("✨ Новое достижение: 🌅 Ранняя пташка (Ранний подъем)!");
             }
 
             if (!profile) {
-                await supabase.from('profiles').insert({ id: user.id, email: user.email, ...updates, points: 0, post_count: 0 });
+                await supabase.from('profiles').insert({ id: user.id, email: user.email, ...updates, points: 0, post_count: 0, total_minutes: 0 });
             } else {
                 await supabase.from('profiles').update(updates).eq('id', user.id);
             }
+
+            // Запускаем таймер времени нахождения на сайте
+            document.getElementById('my-time-display').innerText = formatTimeDisplay(myTotalMinutes);
+            if (activeTimeInterval) clearInterval(activeTimeInterval);
+            activeTimeInterval = setInterval(async () => {
+                myTotalMinutes++;
+                document.getElementById('my-time-display').innerText = formatTimeDisplay(myTotalMinutes);
+                try { await supabase.from('profiles').update({ total_minutes: myTotalMinutes }).eq('id', user.id); } catch(e){}
+            }, 60000);
+
         } catch (e) { console.log("БД профиля:", e.message); }
 
         fetchStatuses();
@@ -218,24 +243,17 @@
             let currentBadges = profile?.badges || '';
             let currentPoints = profile?.points || 0;
 
-            // Если закончил учиться - считаем время и даем очки
             if (profile?.status === '📚 Учусь' && profile?.study_start) {
                 const diffMins = Math.floor((Date.now() - Number(profile.study_start)) / 60000);
-                if (diffMins > 0) {
-                    updateData.points = currentPoints + diffMins; // 1 минута = 1 очко
-                }
-                // Ачивка: Марафонец (учился более 120 мин подряд)
+                if (diffMins > 0) { updateData.points = currentPoints + diffMins; }
                 if (diffMins >= 120 && !currentBadges.includes('🏃‍♂️')) {
                     updateData.badges = currentBadges + '🏃‍♂️';
                     alert("✨ Новое достижение: 🏃‍♂️ Марафонец (Учеба более 2 часов подряд)!");
                 }
             }
 
-            if (text === '📚 Учусь') {
-                updateData.study_start = Date.now();
-            } else {
-                updateData.study_start = null;
-            }
+            if (text === '📚 Учусь') { updateData.study_start = Date.now(); } 
+            else { updateData.study_start = null; }
 
             await supabase.from('profiles').update(updateData).eq('id', currentUser.id);
             fetchStatuses();
@@ -249,7 +267,6 @@
             if (error) throw error;
             if (!data) return;
             
-            // ОНЛАЙН МОНИТОР
             document.getElementById('group-list').innerHTML = data.map(u => {
                 const dotColor = u.is_online ? '#2ecc71' : '#cbd5e1'; 
                 let timeText = '';
@@ -269,7 +286,6 @@
                 `;
             }).join('');
             
-            // ТОП СТУДЕНТОВ
             const sorted = [...data].sort((a, b) => (b.points || 0) - (a.points || 0)).slice(0, 5);
             document.getElementById('top-students-list').innerHTML = sorted.map((u, index) => {
                 const userNick = u.email ? u.email.split('@')[0] : 'User';
@@ -282,7 +298,6 @@
                 `;
             }).join('');
 
-            // МОЙ СТАТУС В ШАПКЕ
             const me = data.find(u => u.id === currentUser?.id);
             if (me) {
                 document.getElementById('my-supabase-name').innerText = `Твой статус: ${me.status || 'Не задан'}`;
@@ -291,7 +306,7 @@
         } catch (e) { console.log(e.message); }
     }
 
-    // ЛЕНТА ПОСТОВ
+    // ЛЕНТА ПОСТОВ (С ЛАЙКАМИ)
     function loadFeed() {
         onSnapshot(query(collection(db, "requests"), orderBy("timestamp", "desc")), (snaps) => {
             const feed = document.getElementById('feed');
@@ -304,13 +319,24 @@
                     <b>${post.name}</b><br><small>${post.email}</small>
                     ${post.text ? `<div class="post-text">${post.text}</div>` : ''}
                     ${post.imageUrl ? `<img src="${post.imageUrl}">` : ''}
+                    <div>
+                        <button class="like-btn" onclick="likePost('${docSnap.id}')">❤️ ${post.likes || 0}</button>
+                    </div>
                 `;
                 feed.appendChild(div);
             });
         });
     }
 
-    // ОТПРАВКА ПОСТА (Ачивка Активист)
+    // ФУНКЦИЯ ЛАЙКА (Firebase)
+    window.likePost = async (postId) => {
+        try {
+            const postRef = doc(db, "requests", postId);
+            await updateDoc(postRef, { likes: increment(1) });
+        } catch(e) { console.error("Ошибка при лайке:", e); }
+    };
+
+    // ОТПРАВКА ПОСТА
     let file = null;
     document.getElementById('imageInput').onchange = (e) => {
         file = e.target.files[0];
@@ -331,10 +357,9 @@
             }
             await addDoc(collection(db, "requests"), {
                 name: document.getElementById('userName').value,
-                email: currentUser.email, text: textValue, imageUrl: url, timestamp: serverTimestamp()
+                email: currentUser.email, text: textValue, imageUrl: url, timestamp: serverTimestamp(), likes: 0
             });
             
-            // Проверка на Активиста
             const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
             let newPostCount = (profile?.post_count || 0) + 1;
             let updateData = { post_count: newPostCount };
