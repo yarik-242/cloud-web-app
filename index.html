@@ -109,7 +109,7 @@
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
     import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-    // 1. КОНФИГ (Твои ключи)
+    // 1. КОНФИГ
     const SUPABASE_URL = 'https://mvyybofgbevtdrjxakgz.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_wOpOx1LKaZ5BeM3vhkeMUA_4ld7jrkP'; 
     const firebaseConfig = {
@@ -130,21 +130,20 @@
     let currentUser = null;
     let feedUnsub = null;
     let dmUnsub = null;
+    let timerInterval = null;
 
-    // === ИСПРАВЛЕННЫЙ ВХОД ===
+    // ВХОД
     document.getElementById('loginBtn').onclick = async () => {
         await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                // Теперь код сам подставит нужный адрес возврата:
-                // Если ты на GitHub, вернет на GitHub. Если на 127.0.0.1, вернет туда же.
                 redirectTo: window.location.origin + window.location.pathname 
             }
         });
     };
     
     // 2. СЛУШАТЕЛЬ АВТОРИЗАЦИИ
-    supabase.auth.onAuthStateChange((event, session) => {
+    supabase.auth.onAuthStateChange(async (event, session) => {
         currentUser = session?.user;
         if (currentUser) {
             document.getElementById('authCard').style.display = 'none';
@@ -155,35 +154,90 @@
             document.getElementById('userName').value = currentUser.user_metadata.full_name || currentUser.email;
             document.getElementById('userEmail').value = currentUser.email;
 
+            // Делаем пользователя "Онлайн" в базе
+            await supabase.from('profiles').update({ is_online: true }).eq('id', currentUser.id);
+
             loadFeed();
             loadDMs(currentUser.email);
             fetchStatuses();
+
+            // Запускаем автоматическое обновление таймеров раз в 60 секунд
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(fetchStatuses, 60000);
+
         } else {
             document.getElementById('authCard').style.display = 'block';
             document.getElementById('navBar').style.display = 'none';
             document.getElementById('feedSection').style.display = 'none';
             document.getElementById('dmSection').style.display = 'none';
+            if (timerInterval) clearInterval(timerInterval);
         }
     });
 
-    document.getElementById('logoutBtn').onclick = () => supabase.auth.signOut();
+    // ВЫХОД
+    document.getElementById('logoutBtn').onclick = async () => {
+        if (currentUser) {
+            // Перед выходом ставим статус "Офлайн"
+            await supabase.from('profiles').update({ is_online: false }).eq('id', currentUser.id);
+        }
+        supabase.auth.signOut();
+    };
 
-    // 3. СТАТУСЫ (Supabase)
+    // Чтобы пользователь уходил в Офлайн, если просто закроет вкладку
+    window.addEventListener('beforeunload', () => {
+        if (currentUser) {
+            navigator.sendBeacon(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${currentUser.id}`, JSON.stringify({ is_online: false }));
+        }
+    });
+
+    // 3. СТАТУСЫ И СЧЕТЧИК ВРЕМЕНИ
     window.updateStatus = async (text, color) => {
         if (!currentUser) return;
-        await supabase.from('profiles').update({ status: text, color: color }).eq('id', currentUser.id);
+        
+        let updateData = { status: text, color: color };
+        
+        // Если статус "Учусь", записываем текущее время старта. Иначе - сбрасываем.
+        if (text === '📚 Учусь') {
+            updateData.study_start = Date.now();
+        } else {
+            updateData.study_start = null;
+        }
+
+        await supabase.from('profiles').update(updateData).eq('id', currentUser.id);
         fetchStatuses();
     };
 
     async function fetchStatuses() {
         const { data } = await supabase.from('profiles').select('*').order('username');
         if (!data) return;
-        document.getElementById('group-list').innerHTML = data.map(u => `
-            <div class="supa-user-item">
-                <div class="supa-dot" style="background:${u.color || '#ccc'}"></div>
-                <div><b>${u.username || u.email}</b>: ${u.status || '...'}</div>
-            </div>
-        `).join('');
+        
+        document.getElementById('group-list').innerHTML = data.map(u => {
+            // Зеленая точка если онлайн, иначе серая
+            const dotColor = u.is_online ? '#2ecc71' : '#cbd5e1'; 
+            
+            // Логика счетчика времени
+            let timeText = '';
+            if (u.status === '📚 Учусь' && u.study_start) {
+                const diffMs = Date.now() - u.study_start;
+                const diffMins = Math.floor(diffMs / 60000); // переводим миллисекунды в минуты
+                
+                if (diffMins < 60) {
+                    timeText = `<span style="color:#64748b; font-size: 0.9em; margin-left: 5px;">(${diffMins} мин)</span>`;
+                } else {
+                    const hrs = Math.floor(diffMins / 60);
+                    const mins = diffMins % 60;
+                    timeText = `<span style="color:#64748b; font-size: 0.9em; margin-left: 5px;">(${hrs} ч ${mins} мин)</span>`;
+                }
+            }
+
+            return `
+                <div class="supa-user-item">
+                    <div class="supa-dot" style="background:${dotColor}"></div>
+                    <div><b>${u.username || u.email.split('@')[0]}</b>: ${u.status || '...'} ${timeText}</div>
+                </div>
+            `;
+        }).join('');
+        
         const me = data.find(u => u.id === currentUser.id);
         if (me) document.getElementById('my-supabase-name').innerText = `Твой статус: ${me.status || 'Не задан'}`;
     }
