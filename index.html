@@ -41,7 +41,7 @@
 
         #feedSection, #dmSection { display: none; width: 100%; flex-direction: column; align-items: center; }
         #feed { width: 100%; max-width: 400px; }
-        .user-post { background: white; padding: 15px; margin-bottom: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-left: 5px solid var(--primary); }
+        .user-post { background: white; padding: 15px; margin-bottom: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-left: 5px solid var(--primary); text-align: left; }
         .user-post img { width: 100%; border-radius: 8px; margin-top: 10px; }
     </style>
 </head>
@@ -64,12 +64,6 @@
 <div id="feedSection">
     <div class="card" style="background: #e0f2fe;">
         <div id="my-supabase-name" style="font-weight: bold; margin-bottom: 10px;">Загрузка профиля...</div>
-        
-        <div style="margin-bottom: 15px; text-align: left;">
-            <label style="font-size: 0.85rem; color: #475569; font-weight: 600;">Твой ник (нажми Enter для сохранения):</label>
-            <input type="text" id="customUsernameInput" placeholder="Придумай ник и нажми Enter" style="margin-top: 5px; margin-bottom: 0;">
-        </div>
-
         <div class="status-buttons">
             <button class="status-btn" style="background: #2ecc71" onclick="updateStatus('📚 Учусь', '#2ecc71')">📚 Учусь</button>
             <button class="status-btn" style="background: #f1c40f; color: black" onclick="updateStatus('☕ Кофе', '#f1c40f')">☕ Кофе</button>
@@ -87,6 +81,9 @@
         <h3>Новый пост ✨</h3>
         <input type="text" id="userName" hidden>
         <input type="email" id="userEmail" hidden>
+        
+        <textarea id="postText" placeholder="Что у тебя нового? Напиши текст здесь..."></textarea>
+        
         <div class="file-input-container">
             <input type="file" id="imageInput" accept="image/*">
         </div>
@@ -138,7 +135,7 @@
     let dmUnsub = null;
     let timerInterval = null;
 
-    // КНОПКА ВХОДА
+    // ВХОД
     document.getElementById('loginBtn').onclick = async () => {
         await supabase.auth.signInWithOAuth({
             provider: 'google',
@@ -156,39 +153,27 @@
             document.getElementById('navBar').style.display = 'flex';
             document.getElementById('feedSection').style.display = 'flex';
             
-            document.getElementById('navUserProfile').innerText = `👤 ${currentUser.email.split('@')[0]}`;
-            document.getElementById('userName').value = currentUser.user_metadata.full_name || currentUser.email;
+            const nameFromEmail = currentUser.email.split('@')[0];
+            document.getElementById('navUserProfile').innerText = `👤 ${nameFromEmail}`;
+            document.getElementById('userName').value = currentUser.user_metadata.full_name || nameFromEmail;
             document.getElementById('userEmail').value = currentUser.email;
 
-            // Безопасное создание или обновление профиля при входе (делаем онлайн)
+            // Безопасно ставим статус Онлайн
             try {
-                const { data: existingProfile } = await supabase.from('profiles').select('id').eq('id', currentUser.id).single();
-                
-                if (!existingProfile) {
-                    // Если зашел впервые — создаем запись
-                    await supabase.from('profiles').insert({
-                        id: currentUser.id,
-                        email: currentUser.email,
-                        username: currentUser.user_metadata.full_name || currentUser.email.split('@')[0],
-                        is_online: true
-                    });
+                const { data: profile } = await supabase.from('profiles').select('id').eq('id', currentUser.id).single();
+                if (!profile) {
+                    await supabase.from('profiles').insert({ id: currentUser.id, email: currentUser.email, is_online: true });
                 } else {
-                    // Если уже есть — просто ставим онлайн
                     await supabase.from('profiles').update({ is_online: true }).eq('id', currentUser.id);
                 }
-            } catch (err) {
-                console.error("Ошибка инициализации профиля:", err.message);
-            }
+            } catch (e) { console.log("Supabase статус не обновлен, но приложение работает:", e.message); }
 
-            // Загружаем данные приложения
             loadFeed();
             loadDMs(currentUser.email);
             fetchStatuses();
 
-            // Обновляем таймеры каждую минуту
             if (timerInterval) clearInterval(timerInterval);
             timerInterval = setInterval(fetchStatuses, 60000);
-
         } else {
             document.getElementById('authCard').style.display = 'block';
             document.getElementById('navBar').style.display = 'none';
@@ -198,111 +183,67 @@
         }
     });
 
-    // КНОПКА ВЫХОДА
+    // ВЫХОД
     document.getElementById('logoutBtn').onclick = async () => {
         if (currentUser) {
-            try {
-                await supabase.from('profiles').update({ is_online: false }).eq('id', currentUser.id);
-            } catch (e) { console.error(e); }
+            try { await supabase.from('profiles').update({ is_online: false }).eq('id', currentUser.id); } catch(e){}
         }
         await supabase.auth.signOut();
     };
 
-    // Если закрыли вкладку — уходим в офлайн
     window.addEventListener('beforeunload', () => {
         if (currentUser) {
             navigator.sendBeacon(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${currentUser.id}`, JSON.stringify({ is_online: false }));
         }
     });
 
-    // ИЗМЕНЕНИЕ НИКА В РЕАЛЬНОМ ВРЕМЕНИ
-    document.getElementById('customUsernameInput').onkeydown = async (e) => {
-        if (e.key === 'Enter') {
-            const newUsername = e.target.value.trim();
-            if (!newUsername || !currentUser) return;
-
-            try {
-                const { error } = await supabase.from('profiles').update({ username: newUsername }).eq('id', currentUser.id);
-                if (error) throw error;
-                
-                // Сразу обновляем имя в скрытом инпуте для постов Firebase
-                document.getElementById('userName').value = newUsername;
-                
-                alert('Ник успешно изменен! ✨');
-                fetchStatuses();
-            } catch (err) {
-                alert('Не удалось изменить ник: ' + err.message);
-            }
-        }
-    };
-
-    // 3. СТАТУСЫ И СЧЕТЧИК ВРЕМЕНИ
+    // 3. СТАТУСЫ И ТАЙМЕРЫ
     window.updateStatus = async (text, color) => {
         if (!currentUser) return;
-        
         let updateData = { status: text, color: color };
         if (text === '📚 Учусь') {
             updateData.study_start = Date.now();
         } else {
             updateData.study_start = null;
         }
-
         try {
             await supabase.from('profiles').update(updateData).eq('id', currentUser.id);
             fetchStatuses();
-        } catch (err) {
-            console.error("Ошибка обновления статуса:", err.message);
-        }
+        } catch (e) { console.error(e); }
     };
 
     async function fetchStatuses() {
         try {
-            const { data, error } = await supabase.from('profiles').select('*').order('username');
-            if (error) throw error;
+            const { data } = await supabase.from('profiles').select('*');
             if (!data) return;
             
             document.getElementById('group-list').innerHTML = data.map(u => {
                 const dotColor = u.is_online ? '#2ecc71' : '#cbd5e1'; 
-                
                 let timeText = '';
+                
                 if (u.status === '📚 Учусь' && u.study_start) {
-                    const diffMs = Date.now() - u.study_start;
-                    const diffMins = Math.floor(diffMs / 60000);
-                    
+                    const diffMins = Math.floor((Date.now() - u.study_start) / 60000);
                     if (diffMins < 60) {
-                        timeText = `<span style="color:#64748b; font-size: 0.9em; margin-left: 5px;">(${diffMins} мин)</span>`;
+                        timeText = `<span style="color:#64748b; font-size: 0.9em; margin-left:5px;">(${diffMins} мин)</span>`;
                     } else {
-                        const hrs = Math.floor(diffMins / 60);
-                        const mins = diffMins % 60;
-                        timeText = `<span style="color:#64748b; font-size: 0.9em; margin-left: 5px;">(${hrs} ч ${mins} мин)</span>`;
+                        timeText = `<span style="color:#64748b; font-size: 0.9em; margin-left:5px;">(${Math.floor(diffMins/60)} ч ${diffMins%60} мин)</span>`;
                     }
                 }
-
-                // Отображаем красивый ник (u.username) вместо почты
-                const displayName = u.username || u.email.split('@')[0];
 
                 return `
                     <div class="supa-user-item">
                         <div class="supa-dot" style="background:${dotColor}"></div>
-                        <div><b>${displayName}</b>: ${u.status || '...'} ${timeText}</div>
+                        <div><b>${u.email ? u.email.split('@')[0] : 'Пользователь'}</b>: ${u.status || '...'} ${timeText}</div>
                     </div>
                 `;
             }).join('');
             
             const me = data.find(u => u.id === currentUser.id);
-            if (me) {
-                document.getElementById('my-supabase-name').innerText = `Твой статус: ${me.status || 'Не задан'}`;
-                // Подставляем текущий ник в инпут, если пользователь его еще не менял руками в этот раз
-                if (!document.getElementById('customUsernameInput').value) {
-                    document.getElementById('customUsernameInput').value = me.username || '';
-                }
-            }
-        } catch (err) {
-            console.error("Ошибка загрузки монитора:", err.message);
-        }
+            if (me) document.getElementById('my-supabase-name').innerText = `Твой статус: ${me.status || 'Не задан'}`;
+        } catch (e) { console.log("Ошибка монитора:", e.message); }
     }
 
-    // 4. ФУНКЦИИ ЛЕНТЫ (Firebase)
+    // 4. ЛЕНТА ПОСТОВ (Исправлено отображение текста и картинок)
     function loadFeed() {
         if (feedUnsub) feedUnsub();
         const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
@@ -315,15 +256,16 @@
                 div.className = 'user-post';
                 div.innerHTML = `
                     <b>${post.name}</b><br><small>${post.email}</small>
+                    ${post.text ? `<p style="margin: 10px 0; white-space: pre-wrap;">${post.text}</p>` : ''}
                     ${post.imageUrl ? `<img src="${post.imageUrl}">` : ''}
                     <div style="margin-top:10px">❤️ ${post.likes || 0}</div>
                 `;
                 feed.appendChild(div);
             });
-        }, (err) => { console.error("Ошибка Firebase ленты:", err.message); });
+        });
     }
 
-    // 5. СООБЩЕНИЯ (Firebase)
+    // 5. ЛИЧНЫЕ СООБЩЕНИЯ (Исправлено получение и добавлена отправка)
     function loadDMs(email) {
         if (dmUnsub) dmUnsub();
         const q = query(collection(db, "messages"), where("receiverEmail", "==", email));
@@ -338,10 +280,28 @@
                 const m = d.data();
                 dmFeed.innerHTML += `<div class="card" style="text-align:left"><b>От: ${m.senderEmail}</b><p>${m.text}</p></div>`;
             });
-        }, (err) => { console.error("Ошибка Firebase сообщений:", err.message); });
+        });
     }
 
-    // 6. ОТПРАВКА ПОСТА
+    // Кнопка отправки ЛС (Была полностью пропущена в исходном коде)
+    document.getElementById('sendDmBtn').onclick = async () => {
+        const receiver = document.getElementById('dmReceiver').value.trim();
+        const text = document.getElementById('dmText').value.trim();
+        if (!receiver || !text) return alert("Заполните email получателя и текст сообщения!");
+        
+        try {
+            await addDoc(collection(db, "messages"), {
+                senderEmail: currentUser.email,
+                receiverEmail: receiver,
+                text: text,
+                timestamp: serverTimestamp()
+            });
+            document.getElementById('dmText').value = "";
+            alert("Сообщение успешно отправлено! ✉️");
+        } catch (e) { alert("Ошибка отправки сообщения: " + e.message); }
+    };
+
+    // 6. ОТПРАВКА ПОСТА (Текст + Фото / Либо-Либо)
     let file = null;
     document.getElementById('imageInput').onchange = (e) => {
         file = e.target.files[0];
@@ -353,6 +313,10 @@
 
     document.getElementById('sendBtn').onclick = async () => {
         const btn = document.getElementById('sendBtn');
+        const textValue = document.getElementById('postText').value.trim();
+        
+        if (!textValue && !file) return alert("Нельзя отправить пустой пост. Напишите текст или выберите фото!");
+        
         btn.disabled = true;
         try {
             let url = null;
@@ -362,13 +326,18 @@
                 url = await getDownloadURL(sRef);
             }
             await addDoc(collection(db, "requests"), {
-                name: document.getElementById('userName').value,
+                name: currentUser.user_metadata.full_name || currentUser.email.split('@')[0],
                 email: currentUser.email,
+                text: textValue, 
                 imageUrl: url,
                 likes: 0,
                 timestamp: serverTimestamp()
             });
+            
+            // Сброс формы
+            document.getElementById('postText').value = "";
             file = null;
+            document.getElementById('imageInput').value = "";
             document.getElementById('imagePreview').style.display = 'none';
         } catch (e) { alert(e.message); }
         btn.disabled = false;
