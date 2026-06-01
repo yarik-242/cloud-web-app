@@ -86,7 +86,7 @@
         .btn-primary { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.2s; font-size: 1rem; }
         .btn-primary:hover { background: #4f46e5; box-shadow: 0 0 15px rgba(99, 102, 241, 0.4); }
 
-        .post-card { background: var(--bg-card); padding: 20px; border-radius: 20px; margin-bottom: 15px; border-left: 4px solid var(--primary); border: 1px solid rgba(255,255,255,0.05); border-left-width: 5px; border-left-color: var(--primary); }
+        .post-card { background: var(--bg-card); padding: 20px; border-radius: 20px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.05); border-left-width: 5px; border-left-color: var(--primary); }
         .post-author { font-weight: 700; color: var(--text-main); font-size: 1.05rem; }
         .post-text { margin: 12px 0; line-height: 1.5; color: var(--text-dim); white-space: pre-wrap; word-wrap: break-word; }
         .post-img { width: 100%; border-radius: 12px; margin-top: 10px; display: block; max-height: 300px; object-fit: cover; }
@@ -178,7 +178,7 @@
 <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
     const SUPABASE_URL = 'https://mvyybofgbevtdrjxakgz.supabase.co';
@@ -192,7 +192,6 @@
         appId: "1:639615889635:web:f591a1ebf29ae95e75d5d6"
     };
 
-    // Исправленная глобальная инициализация Firebase
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const storage = getStorage(app);
@@ -200,7 +199,6 @@
 
     let currentUser = null;
 
-    // Список всех ачивок
     const ALL_ACHIEVEMENTS = [
         { id: 'first_step', icon: '🌱', title: 'Первый шаг', desc: 'Нажми статус "Учусь" первый раз' },
         { id: 'early_bird', icon: '🌅', title: 'Ранняя пташка', desc: 'Зайди в приложение с 4 до 9 утра' },
@@ -210,7 +208,6 @@
         { id: 'coffee', icon: '☕', title: 'Кофеман', desc: 'Поставь статус "Кофе"' }
     ];
 
-    // Функция переключения вкладок
     window.switchTab = function(tabId, btnElement) {
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
         document.querySelectorAll('.tab-trigger').forEach(t => t.classList.remove('active'));
@@ -226,15 +223,19 @@
         return `⏱️ ${h} ч. ${m} мин.`;
     }
 
-    // Авторизация
-    document.getElementById('loginBtn').onclick = () => supabase.auth.signInWithOAuth({ provider: 'google' });
-    
+    // Безопасный логаут
     document.getElementById('logoutBtn').onclick = async () => {
-        if (currentUser) await supabase.from('profiles').update({ is_online: false }).eq('id', currentUser.id);
+        try {
+            if (currentUser) {
+                await supabase.from('profiles').update({ is_online: false }).eq('id', currentUser.id);
+            }
+        } catch(e) { console.error("Ошибка при выходе из профиля:", e); }
         await supabase.auth.signOut();
-        location.reload();
+        window.location.reload();
     };
 
+    document.getElementById('loginBtn').onclick = () => supabase.auth.signInWithOAuth({ provider: 'google' });
+    
     supabase.auth.onAuthStateChange(async (event, session) => {
         currentUser = session?.user;
         if (currentUser) {
@@ -245,24 +246,35 @@
             const nick = currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
             document.getElementById('myProfileName').innerText = nick;
             
+            // Мгновенно выводим кэшированный статус до ответа сервера
+            const cachedStatus = localStorage.getItem('local_status') || 'Статус не выбран';
+            const cachedColor = localStorage.getItem('local_color') || 'var(--text-dim)';
+            document.getElementById('myProfileStatus').innerText = cachedStatus;
+            document.getElementById('myProfileStatus').style.color = cachedColor;
+
             await initProfile();
             loadFeed();
             fetchData();
-            setInterval(fetchData, 5000); 
+            setInterval(fetchData, 4000); 
         }
     });
 
     async function initProfile() {
         try {
             const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
-            if (!profile) {
+            if (profile) {
+                if (profile.status) localStorage.setItem('local_status', profile.status);
+                if (profile.color) localStorage.setItem('local_color', profile.color);
+                if (profile.points) localStorage.setItem('local_points', profile.points);
+                if (profile.badges) localStorage.setItem('local_badges', profile.badges);
+            } else {
                 await supabase.from('profiles').insert({ id: currentUser.id, email: currentUser.email, points: 0, post_count: 0, badges: '' });
             }
             await supabase.from('profiles').update({ is_online: true }).eq('id', currentUser.id);
             
             const hour = new Date().getHours();
             if (hour >= 4 && hour < 9) await giveBadge('early_bird');
-        } catch(e) { console.error(e); }
+        } catch(e) { console.error("Ошибка профиля:", e); }
     }
 
     async function giveBadge(badgeId) {
@@ -271,9 +283,10 @@
             let myBadges = data?.badges || '';
             if (!myBadges.includes(badgeId)) {
                 const updated = myBadges + (myBadges ? ',' : '') + badgeId;
+                localStorage.setItem('local_badges', updated);
                 await supabase.from('profiles').update({ badges: updated }).eq('id', currentUser.id);
             }
-        } catch(e) { console.error(e); }
+        } catch(e) { console.error("Ошибка ачивки:", e); }
     }
 
     window.updateStatus = async function(status, color, btnElement) {
@@ -281,18 +294,22 @@
             document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
             if(btnElement) btnElement.classList.add('active');
 
+            // Мгновенно сохраняем локально для защиты от рефреша страницы
             document.getElementById('myProfileStatus').innerText = status;
             document.getElementById('myProfileStatus').style.color = color;
+            localStorage.setItem('local_status', status);
+            localStorage.setItem('local_color', color);
 
             const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
             let updates = { status, color };
             
-            if (profile.status === '📚 Учусь' && status !== '📚 Учусь') {
+            if (profile && profile.status === '📚 Учусь' && status !== '📚 Учусь') {
                 const diffMins = Math.floor((Date.now() - profile.study_start) / 60000);
                 if (diffMins > 0) {
                     updates.points = (profile.points || 0) + diffMins;
+                    localStorage.setItem('local_points', updates.points);
                     if (diffMins >= 120) await giveBadge('marathon');
-                    if ((updates.points) >= 1000) await giveBadge('legend');
+                    if (updates.points >= 1000) await giveBadge('legend');
                 }
                 updates.study_start = null;
             }
@@ -305,14 +322,29 @@
 
             await supabase.from('profiles').update(updates).eq('id', currentUser.id);
             fetchData();
-        } catch(e) { console.error(u); }
+        } catch(e) { console.error("Ошибка обновления статуса:", e); }
     };
 
-    // Загрузка Рейтинга и Ачивок без вылетов
     async function fetchData() {
         try {
-            const { data: users, error } = await supabase.from('profiles').select('*');
-            if (error || !users) return;
+            let users = [];
+            const { data, error } = await supabase.from('profiles').select('*');
+            if (!error && data) {
+                users = data;
+            }
+
+            // Защита от пустой таблицы / отсутствия RLS
+            if (!users.some(u => u.id === currentUser.id)) {
+                users.push({
+                    id: currentUser.id,
+                    email: currentUser.email,
+                    points: parseInt(localStorage.getItem('local_points') || '0'),
+                    status: localStorage.getItem('local_status') || 'Статус не выбран',
+                    color: localStorage.getItem('local_color') || 'var(--text-dim)',
+                    badges: localStorage.getItem('local_badges') || '',
+                    is_online: true
+                });
+            }
 
             const processedUsers = users.map(u => {
                 let liveMinutes = u.points || 0;
@@ -330,7 +362,8 @@
                 document.getElementById('myProfileStatus').style.color = me.color || 'var(--text-dim)';
                 
                 document.querySelectorAll('.status-btn').forEach(b => {
-                    if (b.innerText.includes(me.status)) b.classList.add('active');
+                    b.classList.remove('active');
+                    if (me.status && b.innerText.includes(me.status)) b.classList.add('active');
                 });
 
                 // Рендер достижений
@@ -351,13 +384,14 @@
             const sorted = [...processedUsers].sort((a,b) => b.liveMinutes - a.liveMinutes);
             document.getElementById('top-students-list').innerHTML = sorted.map((u, i) => {
                 const isOnlineColor = u.is_online ? '#10b981' : '#475569';
+                const userNick = u.email ? u.email.split('@')[0] : 'Студент';
                 return `
                     <div class="rank-item">
                         <div class="rank-info">
                             <div class="rank-num">${i+1}</div>
                             <div class="supa-dot" style="background:${isOnlineColor}"></div>
                             <div>
-                                <div class="rank-name">${u.email ? u.email.split('@')[0] : 'Студент'}</div>
+                                <div class="rank-name">${userNick}</div>
                                 <div style="font-size:0.75rem; color:var(--text-dim)">${u.status || 'Отдыхает'}</div>
                             </div>
                         </div>
@@ -366,26 +400,37 @@
                 `;
             }).join('');
 
-        } catch (e) { console.error("Ошибка обновления данных:", e); }
+        } catch (e) { console.error("Ошибка обновления интерфейса:", e); }
     }
 
-    // Загрузка Постов и Лайков
+    // Загрузка постов с сортировкой на клиенте (Фикс пропавших постов)
     function loadFeed() {
         try {
-            const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
+            const q = collection(db, "requests");
             onSnapshot(q, (snaps) => {
                 const feed = document.getElementById('feed');
                 feed.innerHTML = "";
+                
+                let postsArray = [];
                 snaps.forEach(docSnap => {
-                    const p = docSnap.data();
-                    const postId = docSnap.id;
+                    postsArray.push({ id: docSnap.id, ...docSnap.data() });
+                });
+
+                // Безопасная сортировка без падений из-за индексов Firebase
+                postsArray.sort((a, b) => {
+                    const tA = a.timestamp?.seconds ? a.timestamp.seconds * 1000 : (Number(a.timestamp) || 0);
+                    const tB = b.timestamp?.seconds ? b.timestamp.seconds * 1000 : (Number(b.timestamp) || 0);
+                    return tB - tA;
+                });
+
+                postsArray.forEach(p => {
                     feed.innerHTML += `
                         <div class="post-card">
                             <div class="post-author">${p.name || 'Пользователь'}</div>
                             ${p.text ? `<div class="post-text">${p.text}</div>` : ''}
                             ${p.imageUrl ? `<img src="${p.imageUrl}" class="post-img">` : ''}
                             <div>
-                                <button class="like-btn" onclick="likePost('${postId}')">
+                                <button class="like-btn" onclick="likePost('${p.id}')">
                                     ❤️ <span>${p.likes || 0}</span>
                                 </button>
                             </div>
@@ -393,18 +438,17 @@
                     `;
                 });
             });
-        } catch(e) { console.error("Ошибка ленты:", e); }
+        } catch(e) { console.error("Ошибка ленты постов:", e); }
     }
 
-    // Функция лайка
+    // Починенная функция лайка
     window.likePost = async function(postId) {
         try {
             const postRef = doc(db, "requests", postId);
             await updateDoc(postRef, { likes: increment(1) });
-        } catch(e) { console.error("Ошибка лайка:", e); }
+        } catch(e) { console.error("Ошибка сохранения лайка:", e); }
     };
 
-    // Создание поста
     document.getElementById('sendBtn').onclick = async () => {
         const text = document.getElementById('postText').value.trim();
         const file = document.getElementById('imageInput').files[0];
@@ -422,7 +466,7 @@
 
             await addDoc(collection(db, "requests"), {
                 name: currentUser.user_metadata?.full_name || currentUser.email.split('@')[0],
-                text, imageUrl: url, timestamp: serverTimestamp(), likes: 0
+                text, imageUrl: url, timestamp: Date.now(), likes: 0
             });
 
             await giveBadge('speaker');
