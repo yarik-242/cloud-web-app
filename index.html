@@ -47,24 +47,25 @@
         .user-post { background: white; padding: 15px; margin-bottom: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-left: 5px solid var(--primary); text-align: left; }
         .user-post img { width: 100%; border-radius: 8px; margin-top: 10px; }
         .post-text { margin: 10px 0 5px 0; font-size: 1rem; color: #334155; white-space: pre-wrap; word-break: break-word; }
-   /* СТИЛИ ДЛЯ ДОСТИЖЕНИЙ */
+        
+        /* СТИЛИ ДЛЯ ДОСТИЖЕНИЙ */
         #achievementsSection { display: none; width: 100%; flex-direction: column; align-items: center; }
         .achievements-header { width: 100%; max-width: 400px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .ach-grid { width: 100%; max-width: 400px; display: grid; grid-template-columns: 1fr; gap: 10px; }
-        .ach-card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; flex-direction: column; border: 1px solid #e2e8f0; position: relative; }
-        .ach-card.locked { opacity: 0.5; background: #f8fafc; filter: grayscale(100%); }
-        .ach-lock { position: absolute; top: 10px; right: 10px; font-size: 0.8rem; }
+        .ach-card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; flex-direction: column; border: 1px solid #e2e8f0; position: relative; transition: 0.3s; }
+        .ach-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .ach-card.locked { opacity: 0.6; background: #f8fafc; filter: grayscale(100%); }
+        .ach-card.locked:hover { transform: none; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .ach-lock { position: absolute; top: 12px; right: 12px; font-size: 1.2rem; }
         .ach-header { display: flex; gap: 12px; align-items: flex-start; }
-        .ach-icon { font-size: 1.8rem; background: #f1f5f9; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 10px; }
+        .ach-icon { font-size: 1.8rem; background: #f1f5f9; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 10px; flex-shrink: 0; }
         .ach-info h4 { margin: 0 0 4px 0; color: #1e293b; font-size: 0.95rem; }
-        .ach-info p { margin: 0; font-size: 0.75rem; color: #64748b; line-height: 1.2; }
+        .ach-info p { margin: 0; font-size: 0.75rem; color: #64748b; line-height: 1.3; }
         .ach-rarity { margin-top: 10px; font-size: 0.6rem; font-weight: bold; padding: 3px 6px; border-radius: 4px; display: inline-block; letter-spacing: 0.5px; }
         .rarity-COMMON { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
         .rarity-EPIC { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
         .rarity-LEGENDARY { background: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
-        
     </style>
-    
 </head>
 <body>
 
@@ -84,7 +85,6 @@
 </div>
 
 <div id="feedSection">
-    
     <div class="card" style="background: #e0f2fe;">
         <div id="my-supabase-name" style="font-weight: bold; margin-bottom: 5px;">Синхронизация профиля...</div>
         <div id="my-badges-display" style="font-size: 1.2rem; margin-bottom: 15px;"></div>
@@ -119,6 +119,7 @@
 
     <div id="feed"></div>
 </div>
+
 <div id="achievementsSection">
     <button class="btn btn-primary" id="backToFeedFromAchBtn" style="max-width:400px; margin-bottom: 15px;">⬅ Назад в ленту</button>
     <div class="achievements-header">
@@ -129,6 +130,7 @@
         <div style="text-align:center; color:#64748b;">Загрузка...</div>
     </div>
 </div>
+
 <div id="dmSection">
     <button class="btn btn-primary" id="backToFeedBtn" style="max-width:400px">⬅ Назад в ленту</button>
     <div class="card">
@@ -168,7 +170,15 @@
 
    // НАВИГАЦИЯ
     document.getElementById('goToDmBtn').onclick = () => { document.getElementById('feedSection').style.display = 'none'; document.getElementById('achievementsSection').style.display = 'none'; document.getElementById('dmSection').style.display = 'flex'; };
-    document.getElementById('goToAchBtn').onclick = () => { document.getElementById('feedSection').style.display = 'none'; document.getElementById('dmSection').style.display = 'none'; document.getElementById('achievementsSection').style.display = 'flex'; if(currentUser) loadAchievementsData(currentUser.id); };
+    
+    // При переходе в ачивки вызываем функцию загрузки данных
+    document.getElementById('goToAchBtn').onclick = () => { 
+        document.getElementById('feedSection').style.display = 'none'; 
+        document.getElementById('dmSection').style.display = 'none'; 
+        document.getElementById('achievementsSection').style.display = 'flex'; 
+        if(currentUser) loadAchievementsData(currentUser.id); 
+    };
+    
     document.getElementById('backToFeedBtn').onclick = () => { document.getElementById('dmSection').style.display = 'none'; document.getElementById('feedSection').style.display = 'flex'; };
     document.getElementById('backToFeedFromAchBtn').onclick = () => { document.getElementById('achievementsSection').style.display = 'none'; document.getElementById('feedSection').style.display = 'flex'; };
 
@@ -196,6 +206,7 @@
             document.getElementById('navBar').style.display = 'none';
             document.getElementById('feedSection').style.display = 'none';
             document.getElementById('dmSection').style.display = 'none';
+            document.getElementById('achievementsSection').style.display = 'none';
             if (timerInterval) clearInterval(timerInterval);
         }
     });
@@ -214,6 +225,7 @@
             if (hours < 8 && !currentBadges.includes('🌅')) {
                 updates.badges = currentBadges + '🌅';
                 alert("✨ Новое достижение: 🌅 Ранняя пташка (Зашел в приложение до 8:00)!");
+                // Опционально: здесь можно добавить код вставки в user_achievements, если нужно связать текстовые бейджи с таблицей
             }
 
             if (!profile) {
@@ -329,7 +341,7 @@
                 document.getElementById('my-supabase-name').innerText = `Твой статус: ${me.status || 'Не задан'}`;
                 document.getElementById('my-badges-display').innerText = me.badges ? `Твои награды: ${me.badges}` : 'Учись, чтобы получать значки!';
             }
-        } catch (e) { console.log(me.message); }
+        } catch (e) { console.log(e.message); }
     }
 
     // ЛЕНТА ПОСТОВ
@@ -360,7 +372,7 @@
 
     document.getElementById('sendBtn').onclick = async () => {
         const textValue = document.getElementById('postText').value.trim();
-        if (!textValue && !file) return alert("Введите text или выберите фото!");
+        if (!textValue && !file) return alert("Введите текст или выберите фото!");
         
         document.getElementById('sendBtn').disabled = true;
         try {
@@ -411,19 +423,37 @@
             document.getElementById('dmText').value = ""; alert("Отправлено! ✉️");
         } catch (e) { alert(e.message); }
     };
-    // ЗАГРУЗКА ДОСТИЖЕНИЙ
+    
+    // ЗАГРУЗКА ДОСТИЖЕНИЙ СРАВНЕНИЕМ ОБЩЕЙ ТАБЛИЦЫ И ТАБЛИЦЫ ЮЗЕРА
     async function loadAchievementsData(userId) {
         try {
-            const { data: allAch } = await supabase.from('achievements').select('*').order('id', { ascending: true });
-            const { data: userAch } = await supabase.from('user_achievements').select('achievement_id').eq('user_id', userId);
+            // Берем список ВСЕХ возможных ачивок из БД
+            const { data: allAch, error: achError } = await supabase.from('achievements').select('*').order('id', { ascending: true });
+            
+            // Берем список ИДЕНТИФИКАТОРОВ ачивок, которые УЖЕ ЕСТЬ у текущего пользователя
+            const { data: userAch, error: userError } = await supabase.from('user_achievements').select('achievement_id').eq('user_id', userId);
 
-            if (!allAch) return;
+            if (achError || userError) {
+                console.error("Ошибка при загрузке данных ачивок:", achError || userError);
+                return;
+            }
+
+            if (!allAch || allAch.length === 0) {
+                document.getElementById('achievementsList').innerHTML = '<div style="text-align:center; color:#64748b;">Достижений пока нет в базе...</div>';
+                return;
+            }
+
+            // Создаем набор из ID полученных достижений для быстрой проверки
             const unlockedIds = new Set((userAch || []).map(item => item.achievement_id));
+            
+            // Обновляем счетчик
             document.getElementById('achCounter').innerText = `${unlockedIds.size}/${allAch.length}`;
             
+            // Отрисовываем сетку карточек (полученные яркие, неполученные серые)
             document.getElementById('achievementsList').innerHTML = allAch.map(ach => {
                 const isUnlocked = unlockedIds.has(ach.id);
                 const rarityLabel = ach.rarity === 'COMMON' ? 'ОБЫЧНОЕ' : ach.rarity === 'EPIC' ? 'ЭПИЧЕСКОЕ' : 'ЛЕГЕНДАРНОЕ';
+                
                 return `
                     <div class="ach-card ${isUnlocked ? '' : 'locked'}">
                         ${!isUnlocked ? '<div class="ach-lock">🔒</div>' : ''}
@@ -432,13 +462,13 @@
                             <div class="ach-info">
                                 <h4>${ach.title}</h4>
                                 <p>${ach.description}</p>
-                                <span class="ach-rarity rarity-${ach.rarity}">${rarityLabel}</span>
+                                <span class="ach-rarity rarity-${ach.rarity || 'COMMON'}">${rarityLabel}</span>
                             </div>
                         </div>
                     </div>
                 `;
             }).join('');
-        } catch (err) { console.error("Ошибка:", err); }
+        } catch (err) { console.error("Ошибка генерации интерфейса достижений:", err); }
     }
 </script>
 
