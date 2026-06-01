@@ -103,6 +103,7 @@
 </div>
 
 <script type="module">
+   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, increment, serverTimestamp, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -125,13 +126,25 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const storage = getStorage(app);
-    const auth = getAuth(app); // КРИТИЧЕСКИ ВАЖНАЯ СТРОЧКА
+    const auth = getAuth(app);
 
     let currentUser = null;
     let feedUnsub = null;
     let dmUnsub = null;
 
-    // 2. ВХОД / ВЫХОД
+    // === ИСПРАВЛЕННЫЙ ВХОД ===
+    document.getElementById('loginBtn').onclick = async () => {
+        await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                // Теперь код сам подставит нужный адрес возврата:
+                // Если ты на GitHub, вернет на GitHub. Если на 127.0.0.1, вернет туда же.
+                redirectTo: window.location.origin + window.location.pathname 
+            }
+        });
+    };
+    
+    // 2. СЛУШАТЕЛЬ АВТОРИЗАЦИИ
     supabase.auth.onAuthStateChange((event, session) => {
         currentUser = session?.user;
         if (currentUser) {
@@ -154,7 +167,6 @@
         }
     });
 
-    document.getElementById('loginBtn').onclick = () => supabase.auth.signInWithOAuth({ provider: 'google' });
     document.getElementById('logoutBtn').onclick = () => supabase.auth.signOut();
 
     // 3. СТАТУСЫ (Supabase)
@@ -216,7 +228,7 @@
         });
     }
 
-    // Загрузка фото и отправка
+    // 6. Загрузка фото и отправка
     let file = null;
     document.getElementById('imageInput').onchange = (e) => {
         file = e.target.files[0];
@@ -249,7 +261,7 @@
         btn.disabled = false;
     };
 
-    // Переходы
+    // 7. Переходы
     document.getElementById('goToDmBtn').onclick = () => {
         document.getElementById('feedSection').style.display = 'none';
         document.getElementById('dmSection').style.display = 'flex';
