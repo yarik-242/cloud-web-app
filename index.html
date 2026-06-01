@@ -64,6 +64,12 @@
 <div id="feedSection">
     <div class="card" style="background: #e0f2fe;">
         <div id="my-supabase-name" style="font-weight: bold; margin-bottom: 10px;">Загрузка профиля...</div>
+        
+        <div style="margin-bottom: 15px; text-align: left;">
+            <label style="font-size: 0.85rem; color: #475569; font-weight: 600;">Твой ник (нажми Enter для сохранения):</label>
+            <input type="text" id="customUsernameInput" placeholder="Придумай ник и нажми Enter" style="margin-top: 5px; margin-bottom: 0;">
+        </div>
+
         <div class="status-buttons">
             <button class="status-btn" style="background: #2ecc71" onclick="updateStatus('📚 Учусь', '#2ecc71')">📚 Учусь</button>
             <button class="status-btn" style="background: #f1c40f; color: black" onclick="updateStatus('☕ Кофе', '#f1c40f')">☕ Кофе</button>
@@ -132,7 +138,7 @@
     let dmUnsub = null;
     let timerInterval = null;
 
-    // ВХОД
+    // КНОПКА ВХОДА
     document.getElementById('loginBtn').onclick = async () => {
         await supabase.auth.signInWithOAuth({
             provider: 'google',
@@ -154,14 +160,32 @@
             document.getElementById('userName').value = currentUser.user_metadata.full_name || currentUser.email;
             document.getElementById('userEmail').value = currentUser.email;
 
-            // Делаем пользователя "Онлайн" в базе
-            await supabase.from('profiles').update({ is_online: true }).eq('id', currentUser.id);
+            // Безопасное создание или обновление профиля при входе (делаем онлайн)
+            try {
+                const { data: existingProfile } = await supabase.from('profiles').select('id').eq('id', currentUser.id).single();
+                
+                if (!existingProfile) {
+                    // Если зашел впервые — создаем запись
+                    await supabase.from('profiles').insert({
+                        id: currentUser.id,
+                        email: currentUser.email,
+                        username: currentUser.user_metadata.full_name || currentUser.email.split('@')[0],
+                        is_online: true
+                    });
+                } else {
+                    // Если уже есть — просто ставим онлайн
+                    await supabase.from('profiles').update({ is_online: true }).eq('id', currentUser.id);
+                }
+            } catch (err) {
+                console.error("Ошибка инициализации профиля:", err.message);
+            }
 
+            // Загружаем данные приложения
             loadFeed();
             loadDMs(currentUser.email);
             fetchStatuses();
 
-            // Запускаем автоматическое обновление таймеров раз в 60 секунд
+            // Обновляем таймеры каждую минуту
             if (timerInterval) clearInterval(timerInterval);
             timerInterval = setInterval(fetchStatuses, 60000);
 
@@ -174,72 +198,108 @@
         }
     });
 
-    // ВЫХОД
+    // КНОПКА ВЫХОДА
     document.getElementById('logoutBtn').onclick = async () => {
         if (currentUser) {
-            // Перед выходом ставим статус "Офлайн"
-            await supabase.from('profiles').update({ is_online: false }).eq('id', currentUser.id);
+            try {
+                await supabase.from('profiles').update({ is_online: false }).eq('id', currentUser.id);
+            } catch (e) { console.error(e); }
         }
-        supabase.auth.signOut();
+        await supabase.auth.signOut();
     };
 
-    // Чтобы пользователь уходил в Офлайн, если просто закроет вкладку
+    // Если закрыли вкладку — уходим в офлайн
     window.addEventListener('beforeunload', () => {
         if (currentUser) {
             navigator.sendBeacon(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${currentUser.id}`, JSON.stringify({ is_online: false }));
         }
     });
 
+    // ИЗМЕНЕНИЕ НИКА В РЕАЛЬНОМ ВРЕМЕНИ
+    document.getElementById('customUsernameInput').onkeydown = async (e) => {
+        if (e.key === 'Enter') {
+            const newUsername = e.target.value.trim();
+            if (!newUsername || !currentUser) return;
+
+            try {
+                const { error } = await supabase.from('profiles').update({ username: newUsername }).eq('id', currentUser.id);
+                if (error) throw error;
+                
+                // Сразу обновляем имя в скрытом инпуте для постов Firebase
+                document.getElementById('userName').value = newUsername;
+                
+                alert('Ник успешно изменен! ✨');
+                fetchStatuses();
+            } catch (err) {
+                alert('Не удалось изменить ник: ' + err.message);
+            }
+        }
+    };
+
     // 3. СТАТУСЫ И СЧЕТЧИК ВРЕМЕНИ
     window.updateStatus = async (text, color) => {
         if (!currentUser) return;
         
         let updateData = { status: text, color: color };
-        
-        // Если статус "Учусь", записываем текущее время старта. Иначе - сбрасываем.
         if (text === '📚 Учусь') {
             updateData.study_start = Date.now();
         } else {
             updateData.study_start = null;
         }
 
-        await supabase.from('profiles').update(updateData).eq('id', currentUser.id);
-        fetchStatuses();
+        try {
+            await supabase.from('profiles').update(updateData).eq('id', currentUser.id);
+            fetchStatuses();
+        } catch (err) {
+            console.error("Ошибка обновления статуса:", err.message);
+        }
     };
 
     async function fetchStatuses() {
-        const { data } = await supabase.from('profiles').select('*').order('username');
-        if (!data) return;
-        
-        document.getElementById('group-list').innerHTML = data.map(u => {
-            // Зеленая точка если онлайн, иначе серая
-            const dotColor = u.is_online ? '#2ecc71' : '#cbd5e1'; 
+        try {
+            const { data, error } = await supabase.from('profiles').select('*').order('username');
+            if (error) throw error;
+            if (!data) return;
             
-            // Логика счетчика времени
-            let timeText = '';
-            if (u.status === '📚 Учусь' && u.study_start) {
-                const diffMs = Date.now() - u.study_start;
-                const diffMins = Math.floor(diffMs / 60000); // переводим миллисекунды в минуты
+            document.getElementById('group-list').innerHTML = data.map(u => {
+                const dotColor = u.is_online ? '#2ecc71' : '#cbd5e1'; 
                 
-                if (diffMins < 60) {
-                    timeText = `<span style="color:#64748b; font-size: 0.9em; margin-left: 5px;">(${diffMins} мин)</span>`;
-                } else {
-                    const hrs = Math.floor(diffMins / 60);
-                    const mins = diffMins % 60;
-                    timeText = `<span style="color:#64748b; font-size: 0.9em; margin-left: 5px;">(${hrs} ч ${mins} мин)</span>`;
+                let timeText = '';
+                if (u.status === '📚 Учусь' && u.study_start) {
+                    const diffMs = Date.now() - u.study_start;
+                    const diffMins = Math.floor(diffMs / 60000);
+                    
+                    if (diffMins < 60) {
+                        timeText = `<span style="color:#64748b; font-size: 0.9em; margin-left: 5px;">(${diffMins} мин)</span>`;
+                    } else {
+                        const hrs = Math.floor(diffMins / 60);
+                        const mins = diffMins % 60;
+                        timeText = `<span style="color:#64748b; font-size: 0.9em; margin-left: 5px;">(${hrs} ч ${mins} мин)</span>`;
+                    }
+                }
+
+                // Отображаем красивый ник (u.username) вместо почты
+                const displayName = u.username || u.email.split('@')[0];
+
+                return `
+                    <div class="supa-user-item">
+                        <div class="supa-dot" style="background:${dotColor}"></div>
+                        <div><b>${displayName}</b>: ${u.status || '...'} ${timeText}</div>
+                    </div>
+                `;
+            }).join('');
+            
+            const me = data.find(u => u.id === currentUser.id);
+            if (me) {
+                document.getElementById('my-supabase-name').innerText = `Твой статус: ${me.status || 'Не задан'}`;
+                // Подставляем текущий ник в инпут, если пользователь его еще не менял руками в этот раз
+                if (!document.getElementById('customUsernameInput').value) {
+                    document.getElementById('customUsernameInput').value = me.username || '';
                 }
             }
-
-            return `
-                <div class="supa-user-item">
-                    <div class="supa-dot" style="background:${dotColor}"></div>
-                    <div><b>${u.username || u.email.split('@')[0]}</b>: ${u.status || '...'} ${timeText}</div>
-                </div>
-            `;
-        }).join('');
-        
-        const me = data.find(u => u.id === currentUser.id);
-        if (me) document.getElementById('my-supabase-name').innerText = `Твой статус: ${me.status || 'Не задан'}`;
+        } catch (err) {
+            console.error("Ошибка загрузки монитора:", err.message);
+        }
     }
 
     // 4. ФУНКЦИИ ЛЕНТЫ (Firebase)
@@ -260,7 +320,7 @@
                 `;
                 feed.appendChild(div);
             });
-        });
+        }, (err) => { console.error("Ошибка Firebase ленты:", err.message); });
     }
 
     // 5. СООБЩЕНИЯ (Firebase)
@@ -278,10 +338,10 @@
                 const m = d.data();
                 dmFeed.innerHTML += `<div class="card" style="text-align:left"><b>От: ${m.senderEmail}</b><p>${m.text}</p></div>`;
             });
-        });
+        }, (err) => { console.error("Ошибка Firebase сообщений:", err.message); });
     }
 
-    // 6. Загрузка фото и отправка
+    // 6. ОТПРАВКА ПОСТА
     let file = null;
     document.getElementById('imageInput').onchange = (e) => {
         file = e.target.files[0];
@@ -314,7 +374,7 @@
         btn.disabled = false;
     };
 
-    // 7. Переходы
+    // 7. ПЕРЕХОДЫ
     document.getElementById('goToDmBtn').onclick = () => {
         document.getElementById('feedSection').style.display = 'none';
         document.getElementById('dmSection').style.display = 'flex';
