@@ -47,7 +47,24 @@
         .user-post { background: white; padding: 15px; margin-bottom: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-left: 5px solid var(--primary); text-align: left; }
         .user-post img { width: 100%; border-radius: 8px; margin-top: 10px; }
         .post-text { margin: 10px 0 5px 0; font-size: 1rem; color: #334155; white-space: pre-wrap; word-break: break-word; }
+   /* СТИЛИ ДЛЯ ДОСТИЖЕНИЙ */
+        #achievementsSection { display: none; width: 100%; flex-direction: column; align-items: center; }
+        .achievements-header { width: 100%; max-width: 400px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .ach-grid { width: 100%; max-width: 400px; display: grid; grid-template-columns: 1fr; gap: 10px; }
+        .ach-card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; flex-direction: column; border: 1px solid #e2e8f0; position: relative; }
+        .ach-card.locked { opacity: 0.5; background: #f8fafc; filter: grayscale(100%); }
+        .ach-lock { position: absolute; top: 10px; right: 10px; font-size: 0.8rem; }
+        .ach-header { display: flex; gap: 12px; align-items: flex-start; }
+        .ach-icon { font-size: 1.8rem; background: #f1f5f9; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 10px; }
+        .ach-info h4 { margin: 0 0 4px 0; color: #1e293b; font-size: 0.95rem; }
+        .ach-info p { margin: 0; font-size: 0.75rem; color: #64748b; line-height: 1.2; }
+        .ach-rarity { margin-top: 10px; font-size: 0.6rem; font-weight: bold; padding: 3px 6px; border-radius: 4px; display: inline-block; letter-spacing: 0.5px; }
+        .rarity-COMMON { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .rarity-EPIC { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+        .rarity-LEGENDARY { background: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
+        
     </style>
+    
 </head>
 <body>
 
@@ -61,6 +78,7 @@
     <div class="nav-user" id="navUserProfile">👤 Загрузка...</div>
     <div class="nav-buttons">
         <button class="msg-btn" id="goToDmBtn" style="position:relative">✉️ <span class="msg-badge" id="msgBadge">0</span></button>
+        <button class="msg-btn" id="goToAchBtn" style="background:#8b5cf6">🏆</button>
         <button class="logout-icon-btn" id="logoutBtn">🚪</button>
     </div>
 </div>
@@ -101,7 +119,16 @@
 
     <div id="feed"></div>
 </div>
-
+<div id="achievementsSection">
+    <button class="btn btn-primary" id="backToFeedFromAchBtn" style="max-width:400px; margin-bottom: 15px;">⬅ Назад в ленту</button>
+    <div class="achievements-header">
+        <h3 style="margin:0">🏆 Достижения</h3>
+        <span id="achCounter" style="background:#e0e7ff; color:#4f46e5; padding:4px 10px; border-radius:20px; font-weight:bold; font-size:0.8rem;">0/0</span>
+    </div>
+    <div class="ach-grid" id="achievementsList">
+        <div style="text-align:center; color:#64748b;">Загрузка...</div>
+    </div>
+</div>
 <div id="dmSection">
     <button class="btn btn-primary" id="backToFeedBtn" style="max-width:400px">⬅ Назад в ленту</button>
     <div class="card">
@@ -139,9 +166,11 @@
     let currentUser = null;
     let timerInterval = null;
 
-    // НАВИГАЦИЯ
-    document.getElementById('goToDmBtn').onclick = () => { document.getElementById('feedSection').style.display = 'none'; document.getElementById('dmSection').style.display = 'flex'; };
+   // НАВИГАЦИЯ
+    document.getElementById('goToDmBtn').onclick = () => { document.getElementById('feedSection').style.display = 'none'; document.getElementById('achievementsSection').style.display = 'none'; document.getElementById('dmSection').style.display = 'flex'; };
+    document.getElementById('goToAchBtn').onclick = () => { document.getElementById('feedSection').style.display = 'none'; document.getElementById('dmSection').style.display = 'none'; document.getElementById('achievementsSection').style.display = 'flex'; if(currentUser) loadAchievementsData(currentUser.id); };
     document.getElementById('backToFeedBtn').onclick = () => { document.getElementById('dmSection').style.display = 'none'; document.getElementById('feedSection').style.display = 'flex'; };
+    document.getElementById('backToFeedFromAchBtn').onclick = () => { document.getElementById('achievementsSection').style.display = 'none'; document.getElementById('feedSection').style.display = 'flex'; };
 
     // АВТОРИЗАЦИЯ
     document.getElementById('loginBtn').onclick = async () => {
@@ -382,6 +411,35 @@
             document.getElementById('dmText').value = ""; alert("Отправлено! ✉️");
         } catch (e) { alert(e.message); }
     };
+    // ЗАГРУЗКА ДОСТИЖЕНИЙ
+    async function loadAchievementsData(userId) {
+        try {
+            const { data: allAch } = await supabase.from('achievements').select('*').order('id', { ascending: true });
+            const { data: userAch } = await supabase.from('user_achievements').select('achievement_id').eq('user_id', userId);
+
+            if (!allAch) return;
+            const unlockedIds = new Set((userAch || []).map(item => item.achievement_id));
+            document.getElementById('achCounter').innerText = `${unlockedIds.size}/${allAch.length}`;
+            
+            document.getElementById('achievementsList').innerHTML = allAch.map(ach => {
+                const isUnlocked = unlockedIds.has(ach.id);
+                const rarityLabel = ach.rarity === 'COMMON' ? 'ОБЫЧНОЕ' : ach.rarity === 'EPIC' ? 'ЭПИЧЕСКОЕ' : 'ЛЕГЕНДАРНОЕ';
+                return `
+                    <div class="ach-card ${isUnlocked ? '' : 'locked'}">
+                        ${!isUnlocked ? '<div class="ach-lock">🔒</div>' : ''}
+                        <div class="ach-header">
+                            <div class="ach-icon">${ach.icon || '🏆'}</div>
+                            <div class="ach-info">
+                                <h4>${ach.title}</h4>
+                                <p>${ach.description}</p>
+                                <span class="ach-rarity rarity-${ach.rarity}">${rarityLabel}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } catch (err) { console.error("Ошибка:", err); }
+    }
 </script>
 
 </body>
