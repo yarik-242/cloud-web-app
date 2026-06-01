@@ -118,8 +118,8 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
-
-    // Ваши API ключи
+    
+    // API ключи
     const SUPABASE_URL = 'https://mvyybofgbevtdrjxakgz.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_wOpOx1LKaZ5BeM3vhkeMUA_4ld7jrkP'; 
     const firebaseConfig = {
@@ -171,7 +171,7 @@
         }
     });
 
-    // 🏆 ЛОГИКА ПРОФИЛЯ И АЧИВОК
+    // ЛОГИКА ПРОФИЛЯ И АЧИВОК
     async function manageSupabaseProfile(user, username) {
         try {
             const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
@@ -181,14 +181,13 @@
             let updates = { is_online: true, username: username };
             let currentBadges = profile?.badges || '';
 
-            // 1. Ачивка: Ранняя пташка (зашел с 4:00 до 8:59)
-            if (hours >= 4 && hours < 9 && !currentBadges.includes('🌅')) {
+            // 1. Ачивка: Ранняя пташка (зашел до 8:00 утра)
+            if (hours < 8 && !currentBadges.includes('🌅')) {
                 updates.badges = currentBadges + '🌅';
-                alert("✨ Новое достижение: 🌅 Ранняя пташка (Ранний подъем)!");
+                alert("✨ Новое достижение: 🌅 Ранняя пташка (Зашел в приложение до 8:00)!");
             }
 
             if (!profile) {
-                // Если юзер первый раз — создаем запись с нулями
                 await supabase.from('profiles').insert({ 
                     id: user.id, 
                     ...updates, 
@@ -203,7 +202,7 @@
 
         fetchStatuses();
         if (timerInterval) clearInterval(timerInterval);
-        timerInterval = setInterval(fetchStatuses, 30000); // Обновляем статусы каждые 30 сек
+        timerInterval = setInterval(fetchStatuses, 30000);
     }
 
     // ЛОГАУТ
@@ -216,7 +215,7 @@
         if (currentUser) { navigator.sendBeacon(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${currentUser.id}`, JSON.stringify({ is_online: false })); }
     });
 
-    // ⏱️ СМЕНА СТАТУСА (Начисление очков, времени и ачивка Марафонец)
+    // СМЕНА СТАТУСА (Начисление очков + ачивка Марафонец)
     window.updateStatus = async (text, color) => {
         if (!currentUser) return;
         try {
@@ -227,24 +226,24 @@
             let currentPoints = profile?.points || 0;
             let currentTotalMins = profile?.total_minutes || 0;
 
-            // Если он закончил учиться (переключил статус) - считаем время и даем очки
+            // Если закончил учиться — считаем время
             if (profile?.status === '📚 Учусь' && profile?.study_start) {
                 const diffMins = Math.floor((Date.now() - Number(profile.study_start)) / 60000);
                 if (diffMins > 0) {
-                    updateData.points = currentPoints + diffMins; // 1 минута = 1 очко
-                    updateData.total_minutes = currentTotalMins + diffMins; // сохраняем общее время
+                    updateData.points = currentPoints + diffMins; 
+                    updateData.total_minutes = currentTotalMins + diffMins; 
                 }
-                // 2. Ачивка: Марафонец (учился более 120 мин подряд)
+                // 2. Ачивка: Марафонец (проучился более 2 часов подряд / 120 минут)
                 if (diffMins >= 120 && !currentBadges.includes('🏃‍♂️')) {
                     updateData.badges = currentBadges + '🏃‍♂️';
-                    alert("✨ Новое достижение: 🏃‍♂️ Марафонец (Учеба более 2 часов подряд)!");
+                    alert("✨ Новое achievement: 🏃‍♂️ Марафонец (Непрерывная учеба более 2 часов)!");
                 }
             }
 
             if (text === '📚 Учусь') {
-                updateData.study_start = Date.now(); // Записываем timestamp начала
+                updateData.study_start = Date.now(); 
             } else {
-                updateData.study_start = null; // Сбрасываем таймер
+                updateData.study_start = null; 
             }
 
             await supabase.from('profiles').update(updateData).eq('id', currentUser.id);
@@ -252,7 +251,7 @@
         } catch (e) { console.error(e); }
     };
 
-    // 📊 ОТРИСОВКА МОНИТОРА И ТОП-СТУДЕНТОВ
+    // ОТРИСОВКА МОНИТОРА И ТОП-СТУДЕНТОВ
     async function fetchStatuses() {
         try {
             const { data, error } = await supabase.from('profiles').select('*');
@@ -264,7 +263,6 @@
                 const dotColor = u.is_online ? '#2ecc71' : '#cbd5e1'; 
                 let timeText = '';
                 
-                // Если юзер прямо сейчас учится - отображаем "живой" таймер
                 if (u.status === '📚 Учусь' && u.study_start) {
                     const diffMins = Math.floor((Date.now() - Number(u.study_start)) / 60000);
                     if (diffMins >= 0) timeText = `<span style="color:#64748b; font-size: 0.85em; margin-left:5px;">(${diffMins < 60 ? diffMins + ' мин' : Math.floor(diffMins/60) + 'ч ' + diffMins%60 + 'м'})</span>`;
@@ -302,10 +300,10 @@
                 document.getElementById('my-supabase-name').innerText = `Твой статус: ${me.status || 'Не задан'}`;
                 document.getElementById('my-badges-display').innerText = me.badges ? `Твои награды: ${me.badges}` : 'Учись, чтобы получать значки!';
             }
-        } catch (e) { console.log(e.message); }
+        } catch (e) { console.log(me.message); }
     }
 
-    // 📰 ЛЕНТА ПОСТОВ
+    // ЛЕНТА ПОСТОВ
     function loadFeed() {
         onSnapshot(query(collection(db, "requests"), orderBy("timestamp", "desc")), (snaps) => {
             const feed = document.getElementById('feed');
@@ -324,7 +322,7 @@
         });
     }
 
-    // 📤 ОТПРАВКА ПОСТА (Ачивка Активист)
+    // ОТПРАВКА ПОСТА (Ачивка Активист)
     let file = null;
     document.getElementById('imageInput').onchange = (e) => {
         file = e.target.files[0];
@@ -333,7 +331,7 @@
 
     document.getElementById('sendBtn').onclick = async () => {
         const textValue = document.getElementById('postText').value.trim();
-        if (!textValue && !file) return alert("Введите текст или выберите фото!");
+        if (!textValue && !file) return alert("Введите text или выберите фото!");
         
         document.getElementById('sendBtn').disabled = true;
         try {
@@ -348,14 +346,14 @@
                 email: currentUser.email, text: textValue, imageUrl: url, timestamp: serverTimestamp()
             });
             
-            // 3. Проверка на Активиста
+            // 3. Ачивка: Активист (Написал 20 сообщений в чат ленты)
             const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
             let newPostCount = (profile?.post_count || 0) + 1;
             let updateData = { post_count: newPostCount };
             
             if (newPostCount >= 20 && !(profile?.badges || '').includes('🗣️')) {
                  updateData.badges = (profile?.badges || '') + '🗣️';
-                 alert("✨ Новое достижение: 🗣️ Активист (Написал 20 сообщений)!");
+                 alert("✨ Новое достижение: 🗣️ Активист (Написал 20 сообщений в ленту)!");
             }
             await supabase.from('profiles').update(updateData).eq('id', currentUser.id);
 
@@ -364,7 +362,7 @@
         document.getElementById('sendBtn').disabled = false;
     };
 
-    // ✉️ ЛИЧНЫЕ СООБЩЕНИЯ
+    // ЛИЧНЫЕ СООБЩЕНИЯ
     function loadDMs(email) {
         onSnapshot(query(collection(db, "messages"), where("receiverEmail", "==", email)), (snaps) => {
             const badge = document.getElementById('msgBadge');
