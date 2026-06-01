@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloud App | Feed & DM & Status</title>
+    <title>Cloud App | Live Feed</title>
     <style>
         :root { --primary: #6366f1; --bg: #f1f5f9; --accent: #10b981; --danger: #ef4444; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px 10px; margin: 0; }
@@ -13,7 +13,7 @@
         h3 { color: #1e293b; margin: 0 0 1rem; font-size: 1.2rem; text-align: left;}
         
         input[type="text"], input[type="email"], textarea { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #e2e8f0; border-radius: 8px; box-sizing: border-box; outline: none; font-family: inherit; }
-        textarea { resize: vertical; }
+        textarea { resize: vertical; min-height: 80px; }
 
         .file-input-container { margin-bottom: 15px; text-align: left; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px dashed #cbd5e1; }
         .file-input-container input[type="file"] { width: 100%; font-size: 0.9rem; color: #64748b; cursor: pointer; }
@@ -43,6 +43,7 @@
         #feed { width: 100%; max-width: 400px; }
         .user-post { background: white; padding: 15px; margin-bottom: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-left: 5px solid var(--primary); text-align: left; }
         .user-post img { width: 100%; border-radius: 8px; margin-top: 10px; }
+        .post-text { margin: 10px 0 5px 0; font-size: 1rem; color: #334155; white-space: pre-wrap; word-break: break-word; }
     </style>
 </head>
 <body>
@@ -63,7 +64,7 @@
 
 <div id="feedSection">
     <div class="card" style="background: #e0f2fe;">
-        <div id="my-supabase-name" style="font-weight: bold; margin-bottom: 10px;">Загрузка профиля...</div>
+        <div id="my-supabase-name" style="font-weight: bold; margin-bottom: 10px;">Синхронизация статуса...</div>
         <div class="status-buttons">
             <button class="status-btn" style="background: #2ecc71" onclick="updateStatus('📚 Учусь', '#2ecc71')">📚 Учусь</button>
             <button class="status-btn" style="background: #f1c40f; color: black" onclick="updateStatus('☕ Кофе', '#f1c40f')">☕ Кофе</button>
@@ -74,7 +75,7 @@
 
     <div class="card">
         <h3>Онлайн монитор</h3>
-        <div id="group-list"></div>
+        <div id="group-list">Загрузка пользователей...</div>
     </div>
 
     <div class="card">
@@ -82,7 +83,7 @@
         <input type="text" id="userName" hidden>
         <input type="email" id="userEmail" hidden>
         
-        <textarea id="postText" placeholder="Что у тебя нового? Напиши текст здесь..."></textarea>
+        <textarea id="postText" placeholder="Напиши текст сообщения здесь... (необязательно, если есть фото)"></textarea>
         
         <div class="file-input-container">
             <input type="file" id="imageInput" accept="image/*">
@@ -95,7 +96,7 @@
 </div>
 
 <div id="dmSection">
-    <button class="btn btn-primary" id="backToFeedBtn" style="max-width:400px">⬅ Назад</button>
+    <button class="btn btn-primary" id="backToFeedBtn" style="max-width:400px">⬅ Назад в ленту</button>
     <div class="card">
         <h3>Личное сообщение ✉️</h3>
         <input type="email" id="dmReceiver" placeholder="Email получателя">
@@ -135,46 +136,48 @@
     let dmUnsub = null;
     let timerInterval = null;
 
-    // ВХОД
+    // СВЯЗЫВАНИЕ КНОПОК НАВИГАЦИИ (Работает всегда сразу)
+    document.getElementById('goToDmBtn').onclick = () => {
+        document.getElementById('feedSection').style.display = 'none';
+        document.getElementById('dmSection').style.display = 'flex';
+    };
+    document.getElementById('backToFeedBtn').onclick = () => {
+        document.getElementById('dmSection').style.display = 'none';
+        document.getElementById('feedSection').style.display = 'flex';
+    };
+
+    // КНОПКА ВХОДА
     document.getElementById('loginBtn').onclick = async () => {
         await supabase.auth.signInWithOAuth({
             provider: 'google',
-            options: {
-                redirectTo: window.location.origin + window.location.pathname 
-            }
+            options: { redirectTo: window.location.origin + window.location.pathname }
         });
     };
     
-    // 2. СЛУШАТЕЛЬ АВТОРИЗАЦИИ
+    // 2. ГЛАВНЫЙ СЛУШАТЕЛЬ АВТОРИЗАЦИИ
     supabase.auth.onAuthStateChange(async (event, session) => {
         currentUser = session?.user;
+        
         if (currentUser) {
+            // МГНОВЕННО включаем интерфейс приложения, не дожидаясь ответов от баз данных
             document.getElementById('authCard').style.display = 'none';
             document.getElementById('navBar').style.display = 'flex';
             document.getElementById('feedSection').style.display = 'flex';
             
-            const nameFromEmail = currentUser.email.split('@')[0];
+            const nameFromEmail = currentUser.email ? currentUser.email.split('@')[0] : 'Пользователь';
             document.getElementById('navUserProfile').innerText = `👤 ${nameFromEmail}`;
-            document.getElementById('userName').value = currentUser.user_metadata.full_name || nameFromEmail;
-            document.getElementById('userEmail').value = currentUser.email;
+            document.getElementById('userName').value = currentUser.user_metadata?.full_name || nameFromEmail;
+            document.getElementById('userEmail').value = currentUser.email || '';
 
-            // Безопасно ставим статус Онлайн
-            try {
-                const { data: profile } = await supabase.from('profiles').select('id').eq('id', currentUser.id).single();
-                if (!profile) {
-                    await supabase.from('profiles').insert({ id: currentUser.id, email: currentUser.email, is_online: true });
-                } else {
-                    await supabase.from('profiles').update({ is_online: true }).eq('id', currentUser.id);
-                }
-            } catch (e) { console.log("Supabase статус не обновлен, но приложение работает:", e.message); }
-
+            // ЗАПУСК FIREBASE ЛЕНТЫ И ЛС (Они независимы и включаются сразу)
             loadFeed();
             loadDMs(currentUser.email);
-            fetchStatuses();
 
-            if (timerInterval) clearInterval(timerInterval);
-            timerInterval = setInterval(fetchStatuses, 60000);
+            // ИЗОЛИРОВАННЫЙ ЗАПУСК СУПАБЕЙЗА
+            manageSupabaseProfile(currentUser);
+
         } else {
+            // Интерфейс логаута
             document.getElementById('authCard').style.display = 'block';
             document.getElementById('navBar').style.display = 'none';
             document.getElementById('feedSection').style.display = 'none';
@@ -183,21 +186,47 @@
         }
     });
 
-    // ВЫХОД
+    // Безопасное управление профилем Supabase
+    async function manageSupabaseProfile(user) {
+        try {
+            const { data: profiles } = await supabase.from('profiles').select('id').eq('id', user.id);
+            
+            if (!profiles || profiles.length === 0) {
+                await supabase.from('profiles').insert({ id: user.id, email: user.email, is_online: true });
+            } else {
+                await supabase.from('profiles').update({ is_online: true }).eq('id', user.id);
+            }
+        } catch (e) { console.log("Проблема инициализации в Supabase:", e.message); }
+
+        // Запуск отображения статусов
+        fetchStatuses();
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(fetchStatuses, 30000);
+    }
+
+    // КНОПКА ВЫХОДА (Исправлено: сработает при любых обстоятельствах)
     document.getElementById('logoutBtn').onclick = async () => {
         if (currentUser) {
-            try { await supabase.from('profiles').update({ is_online: false }).eq('id', currentUser.id); } catch(e){}
+            try { 
+                await supabase.from('profiles').update({ is_online: false }).eq('id', currentUser.id); 
+            } catch(e) { console.log("Не удалось выставить офлайн в базе, выходим из сессии..."); }
         }
         await supabase.auth.signOut();
     };
 
+    // Системный перевод в офлайн при закрытии вкладки
     window.addEventListener('beforeunload', () => {
         if (currentUser) {
-            navigator.sendBeacon(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${currentUser.id}`, JSON.stringify({ is_online: false }));
+            fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${currentUser.id}`, {
+                method: 'PATCH',
+                headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_online: false }),
+                keepalive: true
+            });
         }
     });
 
-    // 3. СТАТУСЫ И ТАЙМЕРЫ
+    // 3. СТАТУСЫ И МОНИТОР ВРЕМЕНИ (Полная защита от падений)
     window.updateStatus = async (text, color) => {
         if (!currentUser) return;
         let updateData = { status: text, color: color };
@@ -209,41 +238,60 @@
         try {
             await supabase.from('profiles').update(updateData).eq('id', currentUser.id);
             fetchStatuses();
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error("Ошибка смены статуса:", e); }
     };
 
     async function fetchStatuses() {
+        const myNameLabel = document.getElementById('my-supabase-name');
+        const listContainer = document.getElementById('group-list');
+
         try {
-            const { data } = await supabase.from('profiles').select('*');
-            if (!data) return;
+            const { data, error } = await supabase.from('profiles').select('*');
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                if (listContainer) listContainer.innerHTML = "Нет активных пользователей";
+                return;
+            }
             
-            document.getElementById('group-list').innerHTML = data.map(u => {
-                const dotColor = u.is_online ? '#2ecc71' : '#cbd5e1'; 
+            listContainer.innerHTML = data.map(u => {
+                const isOnline = u.is_online === true;
+                const dotColor = isOnline ? '#2ecc71' : '#cbd5e1'; 
                 let timeText = '';
                 
                 if (u.status === '📚 Учусь' && u.study_start) {
-                    const diffMins = Math.floor((Date.now() - u.study_start) / 60000);
-                    if (diffMins < 60) {
-                        timeText = `<span style="color:#64748b; font-size: 0.9em; margin-left:5px;">(${diffMins} мин)</span>`;
-                    } else {
-                        timeText = `<span style="color:#64748b; font-size: 0.9em; margin-left:5px;">(${Math.floor(diffMins/60)} ч ${diffMins%60} мин)</span>`;
+                    const diffMins = Math.floor((Date.now() - Number(u.study_start)) / 60000);
+                    if (diffMins >= 0) {
+                        if (diffMins < 60) {
+                            timeText = `<span style="color:#64748b; font-size: 0.9em; margin-left:5px;">(учится ${diffMins} мин)</span>`;
+                        } else {
+                            timeText = `<span style="color:#64748b; font-size: 0.9em; margin-left:5px;">(учится ${Math.floor(diffMins/60)} ч ${diffMins%60} мин)</span>`;
+                        }
                     }
                 }
 
+                const userNick = u.email ? u.email.split('@')[0] : 'User';
                 return `
                     <div class="supa-user-item">
                         <div class="supa-dot" style="background:${dotColor}"></div>
-                        <div><b>${u.email ? u.email.split('@')[0] : 'Пользователь'}</b>: ${u.status || '...'} ${timeText}</div>
+                        <div><b>${userNick}</b>: ${u.status || '...'} ${timeText}</div>
                     </div>
                 `;
             }).join('');
             
-            const me = data.find(u => u.id === currentUser.id);
-            if (me) document.getElementById('my-supabase-name').innerText = `Твой статус: ${me.status || 'Не задан'}`;
-        } catch (e) { console.log("Ошибка монитора:", e.message); }
+            const me = data.find(u => u.id === currentUser?.id);
+            if (me && myNameLabel) {
+                myNameLabel.innerText = `Твой статус: ${me.status || 'Не задан'}`;
+            } else if (myNameLabel) {
+                myNameLabel.innerText = "Твой статус: Не задан";
+            }
+        } catch (e) { 
+            console.log("Монитор статусов временно недоступен:", e.message); 
+            if (myNameLabel) myNameLabel.innerText = "Статусы: Офлайн режим";
+            if (listContainer) listContainer.innerHTML = "Не удалось загрузить онлайн монитор.";
+        }
     }
 
-    // 4. ЛЕНТА ПОСТОВ (Исправлено отображение текста и картинок)
+    // 4. ЛЕНТА ПОСТОВ (Текст сверху, Картинка снизу. Можно отправлять только текст / только фото)
     function loadFeed() {
         if (feedUnsub) feedUnsub();
         const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
@@ -254,54 +302,20 @@
                 const post = docSnap.data();
                 const div = document.createElement('div');
                 div.className = 'user-post';
+                
+                // Рендерим: Сначала Имя автора, затем ТЕКСТ, затем КАРТИНКУ (если они есть)
                 div.innerHTML = `
                     <b>${post.name}</b><br><small>${post.email}</small>
-                    ${post.text ? `<p style="margin: 10px 0; white-space: pre-wrap;">${post.text}</p>` : ''}
+                    ${post.text ? `<div class="post-text">${post.text}</div>` : ''}
                     ${post.imageUrl ? `<img src="${post.imageUrl}">` : ''}
-                    <div style="margin-top:10px">❤️ ${post.likes || 0}</div>
+                    <div style="margin-top:10px; font-size: 0.9rem;">❤️ ${post.likes || 0}</div>
                 `;
                 feed.appendChild(div);
             });
-        });
+        }, (err) => { console.error("Ошибка Firebase ленты:", err); });
     }
 
-    // 5. ЛИЧНЫЕ СООБЩЕНИЯ (Исправлено получение и добавлена отправка)
-    function loadDMs(email) {
-        if (dmUnsub) dmUnsub();
-        const q = query(collection(db, "messages"), where("receiverEmail", "==", email));
-        dmUnsub = onSnapshot(q, (snaps) => {
-            const badge = document.getElementById('msgBadge');
-            badge.innerText = snaps.size;
-            badge.style.display = snaps.size > 0 ? 'inline' : 'none';
-            
-            const dmFeed = document.getElementById('dmFeed');
-            dmFeed.innerHTML = snaps.empty ? "Нет сообщений" : "";
-            snaps.forEach(d => {
-                const m = d.data();
-                dmFeed.innerHTML += `<div class="card" style="text-align:left"><b>От: ${m.senderEmail}</b><p>${m.text}</p></div>`;
-            });
-        });
-    }
-
-    // Кнопка отправки ЛС (Была полностью пропущена в исходном коде)
-    document.getElementById('sendDmBtn').onclick = async () => {
-        const receiver = document.getElementById('dmReceiver').value.trim();
-        const text = document.getElementById('dmText').value.trim();
-        if (!receiver || !text) return alert("Заполните email получателя и текст сообщения!");
-        
-        try {
-            await addDoc(collection(db, "messages"), {
-                senderEmail: currentUser.email,
-                receiverEmail: receiver,
-                text: text,
-                timestamp: serverTimestamp()
-            });
-            document.getElementById('dmText').value = "";
-            alert("Сообщение успешно отправлено! ✉️");
-        } catch (e) { alert("Ошибка отправки сообщения: " + e.message); }
-    };
-
-    // 6. ОТПРАВКА ПОСТА (Текст + Фото / Либо-Либо)
+    // 5. ОТПРАВКА ПОСТА (Текст + Картинка / Либо-Либо)
     let file = null;
     document.getElementById('imageInput').onchange = (e) => {
         file = e.target.files[0];
@@ -315,7 +329,8 @@
         const btn = document.getElementById('sendBtn');
         const textValue = document.getElementById('postText').value.trim();
         
-        if (!textValue && !file) return alert("Нельзя отправить пустой пост. Напишите текст или выберите фото!");
+        // Проверка: пост не должен быть абсолютно пустым
+        if (!textValue && !file) return alert("Введите текст сообщения или выберите изображение для публикации!");
         
         btn.disabled = true;
         try {
@@ -325,32 +340,58 @@
                 await uploadBytes(sRef, file);
                 url = await getDownloadURL(sRef);
             }
+            
             await addDoc(collection(db, "requests"), {
-                name: currentUser.user_metadata.full_name || currentUser.email.split('@')[0],
+                name: document.getElementById('userName').value,
                 email: currentUser.email,
-                text: textValue, 
-                imageUrl: url,
+                text: textValue, // Записываем текст
+                imageUrl: url,   // Записываем фото URL (если есть)
                 likes: 0,
                 timestamp: serverTimestamp()
             });
             
-            // Сброс формы
+            // Сброс полей ввода
             document.getElementById('postText').value = "";
             file = null;
             document.getElementById('imageInput').value = "";
             document.getElementById('imagePreview').style.display = 'none';
-        } catch (e) { alert(e.message); }
+        } catch (e) { alert("Ошибка публикации: " + e.message); }
         btn.disabled = false;
     };
 
-    // 7. ПЕРЕХОДЫ
-    document.getElementById('goToDmBtn').onclick = () => {
-        document.getElementById('feedSection').style.display = 'none';
-        document.getElementById('dmSection').style.display = 'flex';
-    };
-    document.getElementById('backToFeedBtn').onclick = () => {
-        document.getElementById('dmSection').style.display = 'none';
-        document.getElementById('feedSection').style.display = 'flex';
+    // 6. ЛИЧНЫЕ СООБЩЕНИЯ
+    function loadDMs(email) {
+        if (dmUnsub) dmUnsub();
+        const q = query(collection(db, "messages"), where("receiverEmail", "==", email));
+        dmUnsub = onSnapshot(q, (snaps) => {
+            const badge = document.getElementById('msgBadge');
+            badge.innerText = snaps.size;
+            badge.style.display = snaps.size > 0 ? 'inline' : 'none';
+            
+            const dmFeed = document.getElementById('dmFeed');
+            dmFeed.innerHTML = snaps.empty ? "Нет входящих сообщений" : "";
+            snaps.forEach(d => {
+                const m = d.data();
+                dmFeed.innerHTML += `<div class="card" style="text-align:left"><b>От: ${m.senderEmail}</b><p>${m.text}</p></div>`;
+            });
+        }, (err) => { console.error("Ошибка Firebase ЛС:", err); });
+    }
+
+    document.getElementById('sendDmBtn').onclick = async () => {
+        const receiver = document.getElementById('dmReceiver').value.trim();
+        const text = document.getElementById('dmText').value.trim();
+        if (!receiver || !text) return alert("Укажите email получателя и текст сообщения!");
+        
+        try {
+            await addDoc(collection(db, "messages"), {
+                senderEmail: currentUser.email,
+                receiverEmail: receiver,
+                text: text,
+                timestamp: serverTimestamp()
+            });
+            document.getElementById('dmText').value = "";
+            alert("Сообщение отправлено! ✉️");
+        } catch (e) { alert("Ошибка отправки: " + e.message); }
     };
 </script>
 
