@@ -39,7 +39,7 @@
         .supa-dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; flex-shrink: 0;}
         .badges { letter-spacing: 2px; font-size: 1.1rem; margin-left: 5px; }
 
-        .top-student-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9; text-align: left;}
+        .top-student-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9; text-align: left; align-items: center;}
         .top-points { color: #64748b; font-weight: bold; font-size: 0.9rem; }
 
         #feedSection, #dmSection { display: none; width: 100%; flex-direction: column; align-items: center; }
@@ -79,7 +79,7 @@
     </div>
 
     <div class="card" style="border: 2px solid #fbbf24; background: #fffbeb;">
-        <h3>🏆 Топ студентов</h3>
+        <h3>🏆 Топ студентов (по очкам)</h3>
         <div id="top-students-list">Загрузка рейтинга...</div>
     </div>
 
@@ -91,7 +91,7 @@
     <div class="card">
         <h3>Новый пост ✨</h3>
         <input type="text" id="userName" hidden>
-        <textarea id="postText" placeholder="Напиши текст сообщения здесь..."></textarea>
+        <textarea id="postText" placeholder="Напиши сообщение в общую ленту..."></textarea>
         <div class="file-input-container">
             <input type="file" id="imageInput" accept="image/*">
         </div>
@@ -118,8 +118,8 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
-    import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
+    // Ваши API ключи
     const SUPABASE_URL = 'https://mvyybofgbevtdrjxakgz.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_wOpOx1LKaZ5BeM3vhkeMUA_4ld7jrkP'; 
     const firebaseConfig = {
@@ -161,7 +161,7 @@
 
             loadFeed();
             loadDMs(currentUser.email);
-            manageSupabaseProfile(currentUser);
+            manageSupabaseProfile(currentUser, nameFromEmail);
         } else {
             document.getElementById('authCard').style.display = 'block';
             document.getElementById('navBar').style.display = 'none';
@@ -171,24 +171,31 @@
         }
     });
 
-    // ЛОГИКА ПРОФИЛЯ И АЧИВОК
-    async function manageSupabaseProfile(user) {
+    // 🏆 ЛОГИКА ПРОФИЛЯ И АЧИВОК
+    async function manageSupabaseProfile(user, username) {
         try {
             const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
             const now = new Date();
             const hours = now.getHours();
             
-            let updates = { is_online: true };
+            let updates = { is_online: true, username: username };
             let currentBadges = profile?.badges || '';
 
-            // Ачивка: Ранняя пташка (зашел с 4:00 до 8:59)
+            // 1. Ачивка: Ранняя пташка (зашел с 4:00 до 8:59)
             if (hours >= 4 && hours < 9 && !currentBadges.includes('🌅')) {
                 updates.badges = currentBadges + '🌅';
                 alert("✨ Новое достижение: 🌅 Ранняя пташка (Ранний подъем)!");
             }
 
             if (!profile) {
-                await supabase.from('profiles').insert({ id: user.id, email: user.email, ...updates, points: 0, post_count: 0 });
+                // Если юзер первый раз — создаем запись с нулями
+                await supabase.from('profiles').insert({ 
+                    id: user.id, 
+                    ...updates, 
+                    points: 0, 
+                    post_count: 0, 
+                    total_minutes: 0 
+                });
             } else {
                 await supabase.from('profiles').update(updates).eq('id', user.id);
             }
@@ -196,9 +203,10 @@
 
         fetchStatuses();
         if (timerInterval) clearInterval(timerInterval);
-        timerInterval = setInterval(fetchStatuses, 30000);
+        timerInterval = setInterval(fetchStatuses, 30000); // Обновляем статусы каждые 30 сек
     }
 
+    // ЛОГАУТ
     document.getElementById('logoutBtn').onclick = async () => {
         if (currentUser) { try { await supabase.from('profiles').update({ is_online: false }).eq('id', currentUser.id); } catch(e){} }
         await supabase.auth.signOut();
@@ -208,7 +216,7 @@
         if (currentUser) { navigator.sendBeacon(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${currentUser.id}`, JSON.stringify({ is_online: false })); }
     });
 
-    // СМЕНА СТАТУСА (Начисление очков и ачивка Марафонец)
+    // ⏱️ СМЕНА СТАТУСА (Начисление очков, времени и ачивка Марафонец)
     window.updateStatus = async (text, color) => {
         if (!currentUser) return;
         try {
@@ -217,14 +225,16 @@
             let updateData = { status: text, color: color };
             let currentBadges = profile?.badges || '';
             let currentPoints = profile?.points || 0;
+            let currentTotalMins = profile?.total_minutes || 0;
 
-            // Если закончил учиться - считаем время и даем очки
+            // Если он закончил учиться (переключил статус) - считаем время и даем очки
             if (profile?.status === '📚 Учусь' && profile?.study_start) {
                 const diffMins = Math.floor((Date.now() - Number(profile.study_start)) / 60000);
                 if (diffMins > 0) {
                     updateData.points = currentPoints + diffMins; // 1 минута = 1 очко
+                    updateData.total_minutes = currentTotalMins + diffMins; // сохраняем общее время
                 }
-                // Ачивка: Марафонец (учился более 120 мин подряд)
+                // 2. Ачивка: Марафонец (учился более 120 мин подряд)
                 if (diffMins >= 120 && !currentBadges.includes('🏃‍♂️')) {
                     updateData.badges = currentBadges + '🏃‍♂️';
                     alert("✨ Новое достижение: 🏃‍♂️ Марафонец (Учеба более 2 часов подряд)!");
@@ -232,9 +242,9 @@
             }
 
             if (text === '📚 Учусь') {
-                updateData.study_start = Date.now();
+                updateData.study_start = Date.now(); // Записываем timestamp начала
             } else {
-                updateData.study_start = null;
+                updateData.study_start = null; // Сбрасываем таймер
             }
 
             await supabase.from('profiles').update(updateData).eq('id', currentUser.id);
@@ -242,37 +252,41 @@
         } catch (e) { console.error(e); }
     };
 
-    // ОТРИСОВКА МОНИТОРА И ТОП-СТУДЕНТОВ
+    // 📊 ОТРИСОВКА МОНИТОРА И ТОП-СТУДЕНТОВ
     async function fetchStatuses() {
         try {
             const { data, error } = await supabase.from('profiles').select('*');
             if (error) throw error;
             if (!data) return;
             
-            // ОНЛАЙН МОНИТОР
+            // 👀 ОНЛАЙН МОНИТОР
             document.getElementById('group-list').innerHTML = data.map(u => {
                 const dotColor = u.is_online ? '#2ecc71' : '#cbd5e1'; 
                 let timeText = '';
                 
+                // Если юзер прямо сейчас учится - отображаем "живой" таймер
                 if (u.status === '📚 Учусь' && u.study_start) {
                     const diffMins = Math.floor((Date.now() - Number(u.study_start)) / 60000);
                     if (diffMins >= 0) timeText = `<span style="color:#64748b; font-size: 0.85em; margin-left:5px;">(${diffMins < 60 ? diffMins + ' мин' : Math.floor(diffMins/60) + 'ч ' + diffMins%60 + 'м'})</span>`;
                 }
 
-                const userNick = u.email ? u.email.split('@')[0] : 'User';
+                const userNick = u.username || 'User';
                 const badgesHtml = u.badges ? `<span class="badges">${u.badges}</span>` : '';
                 return `
                     <div class="supa-user-item">
                         <div class="supa-dot" style="background:${dotColor}"></div>
-                        <div><b>${userNick}</b> ${badgesHtml} <br><span style="font-size:0.85rem; color:#475569">${u.status || '...'} ${timeText}</span></div>
+                        <div><b>${userNick}</b> ${badgesHtml} <br>
+                        <span style="font-size:0.85rem; color:#475569">${u.status || 'В сети'} ${timeText}</span>
+                        <div style="font-size:0.75rem; color:#94a3b8">Всего времени: ${u.total_minutes || 0} мин.</div>
+                        </div>
                     </div>
                 `;
             }).join('');
             
-            // ТОП СТУДЕНТОВ
+            // 🏆 ТОП СТУДЕНТОВ
             const sorted = [...data].sort((a, b) => (b.points || 0) - (a.points || 0)).slice(0, 5);
             document.getElementById('top-students-list').innerHTML = sorted.map((u, index) => {
-                const userNick = u.email ? u.email.split('@')[0] : 'User';
+                const userNick = u.username || 'User';
                 const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🏅';
                 return `
                     <div class="top-student-item">
@@ -291,7 +305,7 @@
         } catch (e) { console.log(e.message); }
     }
 
-    // ЛЕНТА ПОСТОВ
+    // 📰 ЛЕНТА ПОСТОВ
     function loadFeed() {
         onSnapshot(query(collection(db, "requests"), orderBy("timestamp", "desc")), (snaps) => {
             const feed = document.getElementById('feed');
@@ -310,7 +324,7 @@
         });
     }
 
-    // ОТПРАВКА ПОСТА (Ачивка Активист)
+    // 📤 ОТПРАВКА ПОСТА (Ачивка Активист)
     let file = null;
     document.getElementById('imageInput').onchange = (e) => {
         file = e.target.files[0];
@@ -334,10 +348,11 @@
                 email: currentUser.email, text: textValue, imageUrl: url, timestamp: serverTimestamp()
             });
             
-            // Проверка на Активиста
+            // 3. Проверка на Активиста
             const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
             let newPostCount = (profile?.post_count || 0) + 1;
             let updateData = { post_count: newPostCount };
+            
             if (newPostCount >= 20 && !(profile?.badges || '').includes('🗣️')) {
                  updateData.badges = (profile?.badges || '') + '🗣️';
                  alert("✨ Новое достижение: 🗣️ Активист (Написал 20 сообщений)!");
@@ -349,7 +364,7 @@
         document.getElementById('sendBtn').disabled = false;
     };
 
-    // ЛИЧНЫЕ СООБЩЕНИЯ
+    // ✉️ ЛИЧНЫЕ СООБЩЕНИЯ
     function loadDMs(email) {
         onSnapshot(query(collection(db, "messages"), where("receiverEmail", "==", email)), (snaps) => {
             const badge = document.getElementById('msgBadge');
