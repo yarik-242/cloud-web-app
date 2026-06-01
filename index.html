@@ -72,7 +72,7 @@
     
     <div class="card" style="background: #e0f2fe;">
         <div id="my-supabase-name" style="font-weight: bold; margin-bottom: 5px; font-size: 1.1rem;">Синхронизация профиля...</div>
-        <div id="my-time-display" style="font-size: 0.95rem; color: #475569; margin-bottom: 5px;">Время в приложении: 0 мин</div>
+        <div id="my-time-display" style="font-size: 1rem; color: #1e293b; font-weight: 600; margin-bottom: 5px;">⏱️ Время в учебе: 0 ч. 0 мин.</div>
         <div id="my-badges-display" style="font-size: 1.2rem; margin-bottom: 15px;"></div>
         <div class="status-buttons">
             <button class="status-btn" style="background: #2ecc71" onclick="updateStatus('📚 Учусь', '#2ecc71')">📚 Учусь</button>
@@ -142,8 +142,6 @@
 
     let currentUser = null;
     let timerInterval = null;
-    let activeTimeInterval = null;
-    let myTotalMinutes = 0;
 
     // НАВИГАЦИЯ
     document.getElementById('goToDmBtn').onclick = () => { document.getElementById('feedSection').style.display = 'none'; document.getElementById('dmSection').style.display = 'flex'; };
@@ -174,18 +172,17 @@
             document.getElementById('feedSection').style.display = 'none';
             document.getElementById('dmSection').style.display = 'none';
             if (timerInterval) clearInterval(timerInterval);
-            if (activeTimeInterval) clearInterval(activeTimeInterval);
         }
     });
 
-    function formatTimeDisplay(mins) {
-        const hours = Math.floor(mins / 60);
-        const m = mins % 60;
-        if (hours > 0) return `Время в приложении: ${hours} ч. ${m} мин.`;
-        return `Время в приложении: ${mins} мин.`;
+    // Красивое форматирование минут в формат: "Х ч. Y мин."
+    function formatStudyTime(totalMinutes) {
+        const hours = Math.floor(totalMinutes / 60);
+        const mins = totalMinutes % 60;
+        return `${hours} ч. ${mins} мин.`;
     }
 
-    // ЛОГИКА ПРОФИЛЯ, АЧИВОК И СЧЕТЧИКА ВРЕМЕНИ
+    // ЛОГИКА ПРОФИЛЯ И АЧИВОК
     async function manageSupabaseProfile(user) {
         try {
             const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
@@ -194,34 +191,24 @@
             
             let updates = { is_online: true };
             let currentBadges = profile?.badges || '';
-            myTotalMinutes = profile?.total_minutes || 0;
 
             // Ачивка: Ранняя пташка
             if (hours >= 4 && hours < 9 && !currentBadges.includes('🌅')) {
                 updates.badges = currentBadges + '🌅';
-                alert("✨ Новое достижение: 🌅 Ранняя пташка (Ранний подъем)!");
+                alert("✨ Новое achievement: 🌅 Ранняя пташка!");
             }
 
             if (!profile) {
-                await supabase.from('profiles').insert({ id: user.id, email: user.email, ...updates, points: 0, post_count: 0, total_minutes: 0 });
+                await supabase.from('profiles').insert({ id: user.id, email: user.email, ...updates, points: 0, post_count: 0 });
             } else {
                 await supabase.from('profiles').update(updates).eq('id', user.id);
             }
-
-            // Запускаем таймер времени нахождения на сайте
-            document.getElementById('my-time-display').innerText = formatTimeDisplay(myTotalMinutes);
-            if (activeTimeInterval) clearInterval(activeTimeInterval);
-            activeTimeInterval = setInterval(async () => {
-                myTotalMinutes++;
-                document.getElementById('my-time-display').innerText = formatTimeDisplay(myTotalMinutes);
-                try { await supabase.from('profiles').update({ total_minutes: myTotalMinutes }).eq('id', user.id); } catch(e){}
-            }, 60000);
-
         } catch (e) { console.log("БД профиля:", e.message); }
 
         fetchStatuses();
         if (timerInterval) clearInterval(timerInterval);
-        timerInterval = setInterval(fetchStatuses, 30000);
+        // Интервал обновления (каждые 10 секунд для мгновенного отображения счетчика)
+        timerInterval = setInterval(fetchStatuses, 10000);
     }
 
     document.getElementById('logoutBtn').onclick = async () => {
@@ -233,7 +220,7 @@
         if (currentUser) { navigator.sendBeacon(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${currentUser.id}`, JSON.stringify({ is_online: false })); }
     });
 
-    // СМЕНА СТАТУСА (Начисление очков и ачивка Марафонец)
+    // СМЕНА СТАТУСА
     window.updateStatus = async (text, color) => {
         if (!currentUser) return;
         try {
@@ -260,22 +247,27 @@
         } catch (e) { console.error(e); }
     };
 
-    // ОТРИСОВКА МОНИТОРА И ТОП-СТУДЕНТОВ
+    // ОБНОВЛЕНИЕ МОНИТОРА, ТАЙМЕРОВ И ЛИДЕРБОРДА
     async function fetchStatuses() {
         try {
             const { data, error } = await supabase.from('profiles').select('*');
             if (error) throw error;
             if (!data) return;
             
-            document.getElementById('group-list').innerHTML = data.map(u => {
-                const dotColor = u.is_online ? '#2ecc71' : '#cbd5e1'; 
-                let timeText = '';
-                
+            // Рассчитываем время "на лету", чтобы таймер тикал каждую минуту без перезагрузки
+            const processedUsers = data.map(u => {
+                let liveMinutes = u.points || 0;
                 if (u.status === '📚 Учусь' && u.study_start) {
                     const diffMins = Math.floor((Date.now() - Number(u.study_start)) / 60000);
-                    if (diffMins >= 0) timeText = `<span style="color:#64748b; font-size: 0.85em; margin-left:5px;">(${diffMins < 60 ? diffMins + ' мин' : Math.floor(diffMins/60) + 'ч ' + diffMins%60 + 'м'})</span>`;
+                    if (diffMins > 0) liveMinutes += diffMins;
                 }
+                return { ...u, liveMinutes };
+            });
 
+            // ОНЛАЙН МОНИТОР
+            document.getElementById('group-list').innerHTML = processedUsers.map(u => {
+                const dotColor = u.is_online ? '#2ecc71' : '#cbd5e1'; 
+                let timeText = u.status === '📚 Учусь' ? `<span style="color:#4f46e5; font-size: 0.85em; font-weight:600; margin-left:5px;">(${formatStudyTime(u.liveMinutes)})</span>` : '';
                 const userNick = u.email ? u.email.split('@')[0] : 'User';
                 const badgesHtml = u.badges ? `<span class="badges">${u.badges}</span>` : '';
                 return `
@@ -286,27 +278,30 @@
                 `;
             }).join('');
             
-            const sorted = [...data].sort((a, b) => (b.points || 0) - (a.points || 0)).slice(0, 5);
+            // ТОП СТУДЕНТОВ (Сортировка по реальному времени)
+            const sorted = [...processedUsers].sort((a, b) => b.liveMinutes - a.liveMinutes).slice(0, 5);
             document.getElementById('top-students-list').innerHTML = sorted.map((u, index) => {
                 const userNick = u.email ? u.email.split('@')[0] : 'User';
                 const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🏅';
                 return `
                     <div class="top-student-item">
                         <span>${medal} <b>${userNick}</b> <span class="badges">${u.badges || ''}</span></span>
-                        <span class="top-points">${u.points || 0} очк.</span>
+                        <span class="top-points">${formatStudyTime(u.liveMinutes)}</span>
                     </div>
                 `;
             }).join('');
 
-            const me = data.find(u => u.id === currentUser?.id);
+            // КАРТОЧКА ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ
+            const me = processedUsers.find(u => u.id === currentUser?.id);
             if (me) {
                 document.getElementById('my-supabase-name').innerText = `Твой статус: ${me.status || 'Не задан'}`;
+                document.getElementById('my-time-display').innerText = `⏱️ Время в учебе: ${formatStudyTime(me.liveMinutes)}`;
                 document.getElementById('my-badges-display').innerText = me.badges ? `Твои награды: ${me.badges}` : 'Учись, чтобы получать значки!';
             }
         } catch (e) { console.log(e.message); }
     }
 
-    // ЛЕНТА ПОСТОВ (С ЛАЙКАМИ)
+    // ЛЕНТА ПОСТОВ С ЛАЙКАМИ
     function loadFeed() {
         onSnapshot(query(collection(db, "requests"), orderBy("timestamp", "desc")), (snaps) => {
             const feed = document.getElementById('feed');
@@ -328,12 +323,12 @@
         });
     }
 
-    // ФУНКЦИЯ ЛАЙКА (Firebase)
+    // ЛАЙКИ ИЗ FIREBASE
     window.likePost = async (postId) => {
         try {
             const postRef = doc(db, "requests", postId);
             await updateDoc(postRef, { likes: increment(1) });
-        } catch(e) { console.error("Ошибка при лайке:", e); }
+        } catch(e) { console.error(e); }
     };
 
     // ОТПРАВКА ПОСТА
