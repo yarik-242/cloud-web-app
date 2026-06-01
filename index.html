@@ -291,7 +291,71 @@
             fetchStatuses();
         } catch (e) { console.error(e); }
     };
+// Предполагается, что клиент supabase уже инициализирован
+// import { createClient } from '@supabase/supabase-js';
+// const supabase = createClient('ТВОЙ_URL', 'ТВОЙ_КЛЮЧ');
 
+/**
+ * Функция 1: Получение топ-студентов (Чтение данных)
+ * Возвращает массив пользователей, отсортированных по количеству очков.
+ */
+async function getTopStudents(limitCount = 5) {
+    try {
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('id, username, points, badges')
+            .order('points', { ascending: false })
+            .limit(limitCount);
+
+        if (error) {
+            throw error;
+        }
+
+        console.log(`Топ ${limitCount} студентов успешно загружен:`, data);
+        return data;
+    } catch (err) {
+        console.error('Ошибка при получении топ-студентов:', err.message);
+        return null;
+    }
+}
+
+/**
+ * Функция 2: Обновление статуса и добавление очков пользователю (Обновление данных)
+ * Изменяет текстовый статус пользователя и прибавляет бонусные очки к текущим.
+ */
+async function updateUserStatusAndPoints(userId, newStatus, bonusPoints) {
+    try {
+        // Сначала получаем текущие очки пользователя
+        const { data: profile, error: fetchError } = await supabase
+            .from('profiles')
+            .select('points')
+            .eq('id', userId)
+            .single();
+
+        if (fetchError) throw fetchError;
+
+        const currentPoints = profile?.points || 0;
+        const updatedPoints = currentPoints + bonusPoints;
+
+        // Теперь обновляем статус и новые очки
+        const { data, error: updateError } = await supabase
+            .from('profiles')
+            .update({ 
+                status: newStatus, 
+                points: updatedPoints 
+            })
+            .eq('id', userId)
+            .select(); // возвращаем обновленные данные
+
+        if (updateError) throw updateError;
+
+        console.log('Профиль успешно обновлен:', data);
+        return data;
+    } catch (err) {
+        console.error('Ошибка при обновлении профиля:', err.message);
+        return null;
+    }
+}
     // ОТРИСОВКА МОНИТОРА И ТОП-СТУДЕНТОВ
     async function fetchStatuses() {
         try {
