@@ -277,7 +277,124 @@
 
             await supabase.from('profiles').update(updateData).eq('id', currentUser.id);
             fetchStatuses();
-       
+             } catch (e) { console.error(e); }
+    };
+
+    // ОТРИСОВКА МОНИТОРА И ТОП-СТУДЕНТОВ
+    async function fetchStatuses() {
+        try {
+            // 1. Берем профили юзеров и заодно подгружаем наши новые ачивки из БД
+            const [profilesRes, achRes, userAchRes] = await Promise.all([
+                supabase.from('profiles').select('*'),
+                supabase.from('achievements').select('id, icon'),
+                supabase.from('user_achievements').select('user_id, achievement_id')
+            ]);
+
+            const data = profilesRes.data;
+            const allAch = achRes.data || [];
+            const userAch = userAchRes.data || [];
+
+            if (!data) return;
+
+            // 2. Делаем удобный словарик для быстрого поиска иконки по ID ачивки
+            const achIcons = {};
+            allAch.forEach(a => achIcons[a.id] = a.icon || '🏆');
+
+            // 3. Функция, которая собирает в ряд все иконки открытых ачивок для конкретного юзера
+            const getUserEmojis = (userId) => {
+                const userUnlocked = userAch.filter(ua => ua.user_id === userId);
+                return userUnlocked.map(ua => achIcons[ua.achievement_id]).join('');
+            };
+
+            // 👀 ОНЛАЙН МОНИТОР
+            document.getElementById('group-list').innerHTML = data.map(u => {
+                const dotColor = u.is_online ? '#2ecc71' : '#cbd5e1'; 
+                let timeText = '';
+                
+                if (u.status === '📚 Учусь' && u.study_start) {
+                    const diffMins = Math.floor((Date.now() - Number(u.study_start)) / 60000);
+                    if (diffMins >= 0) timeText = `<span style="color:#64748b; font-size: 0.85em; margin-left:5px;">(${diffMins < 60 ? diffMins + ' мин' : Math.floor(diffMins/60) + 'ч ' + diffMins%60 + 'м'})</span>`;
+                }
+
+                const userNick = u.username || 'User';
+                // Склеиваем старые ручные бейджи из профиля и новые крутые ачивки из БД
+                const combinedBadges = (u.badges || '') + getUserEmojis(u.id);
+                const badgesHtml = combinedBadges ? `<span class="badges">${combinedBadges}</span>` : '';
+                
+                return `
+                    <div class="supa-user-item">
+                        <div class="supa-dot" style="background:${dotColor}"></div>
+                        <div><b>${userNick}</b> ${badgesHtml} <br>
+                        <span style="font-size:0.85rem; color:#475569">${u.status || 'В сети'} ${timeText}</span>
+                        <div style="font-size:0.75rem; color:#94a3b8">Всего времени: ${u.total_minutes || 0} мин.</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            // 🏆 ТОП СТУДЕНТОВ
+            const sorted = [...data].sort((a, b) => (b.points || 0) - (a.points || 0)).slice(0, 5);
+            document.getElementById('top-students-list').innerHTML = sorted.map((u, index) => {
+                const userNick = u.username || 'User';
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🏅';
+                
+                const combinedBadges = (u.badges || '') + getUserEmojis(u.id);
+                const badgesHtml = combinedBadges ? `<span class="badges">${combinedBadges}</span>` : '';
+
+                return `
+                    <div class="top-student-item">
+                        <span>${medal} <b>${userNick}</b> ${badgesHtml}</span>
+                        <span class="top-points">${u.points || 0} очк.</span>
+                    </div>
+                `;
+            }).join('');
+
+            // МОЙ СТАТУС В ШАПКЕ
+            const me = data.find(u => u.id === currentUser?.id);
+            if (me) {
+                const myCombinedBadges = (me.badges || '') + getUserEmojis(me.id);
+                document.getElementById('my-supabase-name').innerText = `Твой статус: ${me.status || 'Не задан'}`;
+                document.getElementById('my-badges-display').innerText = myCombinedBadges ? `Твои награды: ${myCombinedBadges}` : 'Учись, чтобы получать значки!';
+            }
+        } catch (e) { console.error("Ошибка при отрисовке:", e.message); }
+    }
+
+                const userNick = u.username || 'User';
+                const badgesHtml = u.badges ? `<span class="badges">${u.badges}</span>` : '';
+                return `
+                    <div class="supa-user-item">
+                        <div class="supa-dot" style="background:${dotColor}"></div>
+                        <div><b>${userNick}</b> ${badgesHtml} <br>
+                        <span style="font-size:0.85rem; color:#475569">${u.status || 'В сети'} ${timeText}</span>
+                        <div style="font-size:0.75rem; color:#94a3b8">Всего времени: ${u.total_minutes || 0} мин.</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            // 🏆 ТОП СТУДЕНТОВ
+            const sorted = [...data].sort((a, b) => (b.points || 0) - (a.points || 0)).slice(0, 5);
+            document.getElementById('top-students-list').innerHTML = sorted.map((u, index) => {
+                const userNick = u.username || 'User';
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🏅';
+                return `
+                    <div class="top-student-item">
+                        <span>${medal} <b>${userNick}</b> <span class="badges">${u.badges || ''}</span></span>
+                        <span class="top-points">${u.points || 0} очк.</span>
+                    </div>
+                `;
+            }).join('');
+
+            // МОЙ СТАТУС В ШАПКЕ
+            const me = data.find(u => u.id === currentUser?.id);
+            if (me) {
+                document.getElementById('my-supabase-name').innerText = `Твой статус: ${me.status || 'Не задан'}`;
+                document.getElementById('my-badges-display').innerText = me.badges ? `Твои награды: ${me.badges}` : 'Учись, чтобы получать значки!';
+            }
+        } catch (e) { console.log(me.message); }
+    }
+
+    
     // ЛЕНТА ПОСТОВ
     function loadFeed() {
         onSnapshot(query(collection(db, "requests"), orderBy("timestamp", "desc")), (snaps) => {
